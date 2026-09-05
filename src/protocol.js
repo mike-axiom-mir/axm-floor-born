@@ -1,8 +1,21 @@
 import { stableClone } from './stable.js';
 
 export const PLAYER_PROTOCOL_VERSION = 'axm.player.v0.1';
+export const RTS_PLAYER_PROTOCOL_VERSION = 'axm.player.rts.v0.1';
 
-const ALLOWED_ACTION_KINDS = new Set(['move', 'inspect', 'gather', 'signal', 'wait']);
+const SUPPORTED_PROTOCOLS = new Set([
+  PLAYER_PROTOCOL_VERSION,
+  RTS_PLAYER_PROTOCOL_VERSION,
+]);
+
+const ALLOWED_ACTION_KINDS = new Set([
+  'move',
+  'inspect',
+  'gather',
+  'signal',
+  'wait',
+  'command',
+]);
 
 export function freezeObservation(observation) {
   const clone = stableClone(observation);
@@ -11,7 +24,7 @@ export function freezeObservation(observation) {
 
 export function validateObservation(observation) {
   if (!observation || typeof observation !== 'object') throw new TypeError('observation must be an object');
-  if (observation.protocol !== PLAYER_PROTOCOL_VERSION) throw new Error('unsupported player protocol');
+  if (!SUPPORTED_PROTOCOLS.has(observation.protocol)) throw new Error('unsupported player protocol');
   if (!Number.isInteger(observation.turn) || observation.turn < 0) throw new Error('turn must be a non-negative integer');
   if (!observation.self || typeof observation.self !== 'object') throw new Error('observation.self is required');
   if (!observation.place || typeof observation.place !== 'object') throw new Error('observation.place is required');
@@ -36,6 +49,21 @@ export function validateActionShape(action) {
   if (action.affordanceTags !== undefined) {
     if (!Array.isArray(action.affordanceTags) || action.affordanceTags.some((tag) => typeof tag !== 'string')) {
       throw new Error('action.affordanceTags must be an array of strings');
+    }
+  }
+  if (action.effectiveCost !== undefined) {
+    if (!Number.isInteger(action.effectiveCost) || action.effectiveCost < 0) {
+      throw new Error('action.effectiveCost must be a non-negative integer');
+    }
+  }
+  if (action.affectedGroups !== undefined) {
+    if (
+      !Array.isArray(action.affectedGroups)
+      || action.affectedGroups.length === 0
+      || action.affectedGroups.some((group) => typeof group !== 'string' || group.length === 0)
+      || new Set(action.affectedGroups).size !== action.affectedGroups.length
+    ) {
+      throw new Error('action.affectedGroups must be a non-empty unique array of strings');
     }
   }
   return true;
