@@ -20,6 +20,22 @@ Humans, neural models, Floorborn, and future AXM player architectures do not nee
 
 An RTS may allow any player unlimited internal reasoning while limiting every player to the same effective APM. The scarce resource is external agency, not thought.
 
+## Operational player definition
+
+For this research repo, calling Floorborn an **operational player** requires all of the following in a bounded game:
+
+1. it has a persistent player identity distinct from the game engine;
+2. it receives only player-facing observations;
+3. it can commit only legal player actions;
+4. its action selection is independent of a human or neural model choosing on its behalf;
+5. actions produce ordinary world consequences shared with other players;
+6. its own retained history can causally affect later choices;
+7. decision evidence remains inspectable;
+8. sessions can be replayed from receipts;
+9. changing world state can change its path rather than requiring a fixed script.
+
+This definition is deliberately narrower than intelligence, personhood, consciousness, or general game-playing competence.
+
 ## First architecture
 
 ```text
@@ -46,12 +62,14 @@ receipt: before -> choice -> outcome -> after
 
 ## Experience layers
 
-The initial implementation keeps explicit inspectable memory:
+The current implementation keeps explicit inspectable memory:
 
 1. **Session history**: what happened in the current run.
 2. **Episodes**: notable action/outcome records retained across sessions.
 3. **Patterns**: repeated or salient relationships between visible affordance tags and outcomes.
-4. **Growth candidates**: future work; validated patterns may eventually propose new deterministic perspectives, but v0.1 does not self-modify code.
+4. **Recent-action pressure**: bounded anti-loop evidence that discourages repeatedly selecting the same action without deleting long-term memory.
+5. **Goal relevance**: an explicit state signal that can outrank a learned surface association when the world exposes that an action now advances the active objective.
+6. **Growth candidates**: future work; validated patterns may eventually propose new deterministic perspectives, but v0.3 does not self-modify code.
 
 ## Why games
 
@@ -61,9 +79,20 @@ Across genres, the same Floorborn lineage may encounter different state families
 
 The important comparison is not only score. It is what each architecture notices, remembers, and chooses to spend its limited agency on.
 
+## Current evidence ladder
+
+### v0.1
+Floorborn occupied a bounded solo RPG player slot and retained experience changed a later legal choice.
+
+### v0.2
+Floorborn and a working neural chat independently cooperated in one shared RPG world through the same player protocol.
+
+### v0.3
+Floorborn completed multiple seed-dependent hidden-layout expeditions without a fixed action sequence, changed later route selection after prior experience, continued after a second player's world-state changes, and completed a blind live expedition with a working chat. The live run preserved full receipts and exact replay.
+
 ## Cross-architecture future
 
-A later flagship experiment can put independent player types in the same RPG party:
+Independent player types can share one neutral game boundary:
 
 ```text
 Human       Neural model       Floorborn       other AXM player
@@ -77,18 +106,4 @@ Human       Neural model       Floorborn       other AXM player
 
 They may cooperate rather than compete. Each keeps its own history. The game remains neutral about how each player produces a decision.
 
-## v0.2 live co-op gate
-
-The first cross-architecture proof uses two genuine player slots in one shared turn-based RPG world. `floorborn-001` is driven by deterministic Floorborn arbitration. `chat-001` is an external player slot: a working neural chat may read only its returned player observation and commit one offered legal action id.
-
-The proof quest deliberately requires shared world participation rather than parallel solo runs:
-
-- each shard exists only once globally;
-- Floorborn and the chat may split to different locations;
-- each player has an independent position and inventory;
-- both shards must be recovered;
-- both players must reunite at the same gate;
-- the gate opens only through an ordinary legal `signal` action;
-- every turn receives a deterministic action/outcome receipt and can be replayed.
-
-This is still not a claim of subjective experience. It is a stronger operational claim: two different decision architectures can occupy equal game-defined player boundaries, take independent actions, alter one shared world, and accumulate separate causal histories.
+The next depth target is not another genre yet. First deepen the RPG player: optional goals, richer communication, mistakes and recovery, companion memory across sessions, longer horizons, and stronger blind/adversarial runs.
