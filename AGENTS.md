@@ -23,6 +23,8 @@ One chat = one PR lane. Do not scatter work across unrelated branches or reposit
 - Broad relationship familiarity is context, not proof of a specific claim.
 - For a claim-dependent action: unverified exact claim -> verify first; supported exact claim -> broader context may participate; contradicted exact claim -> exact evidence blocks broad relationship/communication priors for that claim.
 - Preserve lifetime evidence and recent specific evidence as separate timescales. Recent consistent receipts may revise current stance without deleting historical counts.
+- RTS equality means equal external effective-action bandwidth, not fake strict alternation. A player that still owns budget may keep legal command opportunities while another player is exhausted or yielded.
+- RTS command cost is based on independently retasked groups/effects, not API packet count. Do not allow a giant payload to masquerade as one APM action.
 
 ## Preserved gates
 
@@ -105,26 +107,79 @@ npm run campaign
 
 Evidence: `evidence/V07_CAMPAIGN_GATE.md`.
 
-## Current depth after v0.7: first genre transfer
-The bounded RPG player substrate and combined campaign are now strong enough to justify the first genre-transfer experiment.
+### v0.8 RTS action-budget transfer
+Must remain passing:
+1. `axm.player.rts.v0.1` is a bounded sibling player protocol;
+2. equivalent player types receive the same visible RTS state, legal command vocabulary, action window, and effective APM cap;
+3. hidden engine-only enemy truth remains outside the player observation;
+4. five-second windows expose two effective actions, equivalent to 24 effective APM;
+5. multi-group commands pay one effective action per independently retasked group;
+6. dishonest declared cost and stale over-budget commands are rejected before world mutation;
+7. budget replenishment is deterministic and exactly replayable;
+8. Floorborn can transfer through the RTS player door and choose which legal commands deserve scarce agency;
+9. win/loss is not required for this gate.
 
-### v0.8 target: RTS action-budget player
-Build a minimal deterministic RTS laboratory that tests whether the same Floorborn player boundary can operate under real-time-style scarce agency.
+Named proof:
 
-Hard RTS equality constraints:
-1. all equivalent player types receive the same visible RTS state/fog-of-war boundary;
-2. all equivalent player types receive the same legal command vocabulary;
-3. internal reasoning/computation is not artificially equalized;
-4. external effective APM/action bandwidth **is** equalized;
-5. one command may not secretly contain hundreds of individually retasked units to bypass APM;
-6. command bundles must have a deterministic effective-action cost;
-7. over-budget commands are rejected before world mutation;
-8. action budget replenishment must be deterministic and replayable;
-9. Floorborn must choose which commands are worth spending scarce actions on;
-10. measurements should include action-budget allocation, not only win/loss;
-11. preserve full command receipts and exact replay;
-12. do not optimize Floorborn specifically to beat humans or neural models.
+```bash
+npm run rts
+```
 
-Start with a tiny RTS world before plugging into an AXM game. The research target is whether Floorborn's player continuity transfers into a different genre and how it spends bounded agency.
+Evidence: `evidence/V08_RTS_TRANSFER_GATE.md`.
 
-Do not optimize for winning. The research target is what kind of player a machine-floor architecture becomes when it can participate, accumulate and revise history, carry and retire intentions, recover, transfer across genres, and remain bounded by the same world-facing rules as other players.
+### v0.9 shared RTS player slots
+Must remain passing:
+1. exactly two neutral player slots can occupy one shared RTS world;
+2. mirrored roles receive the same protocol, command vocabulary, fog rules, command costs, and initial budget;
+3. each player owns an independent effective-action budget;
+4. one player cannot consume the other player's budget;
+5. equal APM does not force strict command alternation;
+6. a player with remaining budget may retain legal command opportunities while the other is exhausted/yielded;
+7. one player's world mutation may change what the other can later observe, but only through that other player's legal visibility/fog boundary;
+8. host-only hidden doctrine never enters a player observation;
+9. stale/over-budget commands remain rejected before either player's world state mutates;
+10. shared command receipts include acting player and both budget paths and replay exactly;
+11. Floorborn and a working neural chat can occupy the two slots through the live bridge without architecture-specific privileges;
+12. failed RTS run #20 remains evidence that a strict-alternation test was wrong, not a reason to distort the scheduler.
+
+Named proof:
+
+```bash
+npm run shared-rts
+```
+
+Live bridge:
+
+```bash
+npm run live-shared-rts -- new FILE
+npm run live-shared-rts -- act FILE ACTION_ID
+npm run live-shared-rts -- show FILE
+npm run live-shared-rts -- reveal FILE
+npm run live-shared-rts -- verify FILE
+```
+
+Evidence:
+- `evidence/V09_SHARED_RTS_GATE.md`
+- `evidence/LIVE_SHARED_RTS_SESSION_001.md`
+
+## Current depth after v0.9: contested RTS play
+Do not expand into a large RTS yet. Add consequence before content.
+
+### v0.10 target: contested RTS encounter
+Build a tiny deterministic contested RTS world where two equal player slots can make choices that materially constrain, damage, displace, reveal, or protect the other side.
+
+Hard constraints:
+1. preserve independent equal effective-APM budgets;
+2. preserve player-specific fog and the same legal command-cost rules;
+3. introduce one shared contested objective or deterministic combat/contact system;
+4. positioning, scouting, attack/defend/retreat choices must have replayable consequences;
+5. one player's action must be able to change the other player's later legal choices or world state through ordinary game rules;
+6. do not hardcode aggressive/defensive personalities into Floorborn;
+7. allow mistakes and recovery rather than ending the experiment on first bad move;
+8. do not make winning the only metric; record agency allocation, information gathering, positioning, losses, recovery, and objective pressure;
+9. any combat resolution must be deterministic from visible/receipt-backed game state;
+10. no player may issue more external effective actions than its own budget permits;
+11. exact shared-world replay must include combat/state consequences;
+12. once the deterministic gate is green, let a working chat occupy the peer slot through the same live boundary.
+
+Do not optimize for winning. The research target is what kind of player a machine-floor architecture becomes when it can participate, accumulate and revise history, carry and retire intentions, recover, transfer across genres, spend bounded agency, and face another independent player under the same world-facing rules.
