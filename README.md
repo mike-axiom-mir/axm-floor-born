@@ -2,137 +2,106 @@
 
 **Research question:** can the machine floor itself become a real player?
 
-Floorborn is an AXM experiment in giving a deterministic machine-floor architecture a bounded player slot in a game, rather than wrapping a conventional neural game-playing agent around it.
-
-The project deliberately separates four claims:
-
-1. **v0.1:** Floorborn can occupy a bounded player slot and let retained experience change a later legal choice.
-2. **v0.2:** Floorborn and an external working chat can independently cooperate inside one shared replayable RPG world.
-3. **v0.3:** Floorborn can handle a hidden-layout expedition without a fixed action script, respond to changing world state, and carry learned preferences into later sessions.
-4. **v0.4:** the same Floorborn lineage can preserve companion-specific continuity, recover from a bad hidden outcome without resetting, and let earlier optional experience change a later non-required intent.
-
-At v0.4, Floorborn meets this repo's definition of a **bounded operational player with inspectable continuity inside the RPG laboratory**. That is not a claim of consciousness, personhood, human-like understanding, or general game-playing intelligence.
-
-## Root principle
+Floorborn gives a deterministic machine-floor architecture a bounded player slot rather than hiding a conventional neural game-playing agent inside it.
 
 > **Different outside. Equal inside. Choice and action define the player.**
 
-Humans, neural models, Floorborn, and future player architectures may think in radically different ways. The game enforces equality at the interaction boundary: visibility, legal actions, consequences, and genre-specific action/APM/deadline limits.
+Humans, neural models, Floorborn, and future player architectures may think differently. The game equalizes the world-facing boundary: visibility, legal actions, consequences, and genre-specific action/APM/deadline limits.
 
-## v0.1 bounded player proof
+## Evidence ladder
 
-```text
-bounded observation
-      |
-      v
-Floorborn perspective nodes
-      |
- deterministic arbitration
-      |
-      v
-one legal player action
-      |
-      v
-   game outcome
-      |
-      v
-receipt + persistent experience
-      |
-      +----> later decision can change
-```
+### v0.1 — bounded player
 
-No neural model is used in the Floorborn chooser.
+Floorborn receives only player-visible state, chooses only legal actions, produces replayable receipts, and retains explicit experience that can measurably change a later choice.
 
-Expected first-proof behavior:
+### v0.2 — shared-world player
 
-- a fresh Floorborn player chooses the forest at an otherwise equal crossroads;
-- a Floorborn player that previously discovered and collected a useful cache in ancient ruins later chooses the ruins;
-- the decision trace exposes the learned `ancient` / `structure` evidence;
-- the earlier game session replays from receipts to exactly the same public state.
+Floorborn and an external working neural chat occupy separate player identities in one RPG world through the same `axm.player.v0.1` protocol. Neither controls the other. The first live Twinseal co-op run completed and replayed exactly.
 
-## v0.2 live co-op proof
+Evidence: [`evidence/LIVE_CHAT_SESSION_001.md`](evidence/LIVE_CHAT_SESSION_001.md).
 
-Floorborn can share one deterministic RPG world with an **external chat player** through the same `axm.player.v0.1` observation/action protocol. The chat bridge is intentionally narrow: it exposes only the current player's observation and accepts exactly one offered legal action id.
+### v0.3 — hidden expedition player
 
-The first co-op quest is the Twinseal Gate. Floorborn and the chat can independently move, inspect, gather, wait, and signal through ordinary player actions. Each shard exists only once in the shared world, both players must reunite, and the complete session is receipt-backed and exactly replayable.
+A seed-dependent world hides two required seals, one optional relic, and one trap across four regions. Floorborn must discover them through ordinary play. It completes multiple unseen layouts without a fixed action sequence, changes routes as experience changes, absorbs another player's world-state changes, and remains exactly replayable.
 
-### Play the Twinseal proof from a working chat
+A working chat and Floorborn also completed a blind 13-turn shared expedition while the chat saw only its bounded observation/action view.
+
+Evidence: [`evidence/LIVE_EXPEDITION_SESSION_001.md`](evidence/LIVE_EXPEDITION_SESSION_001.md), [`evidence/V03_PLAYER_GATE.md`](evidence/V03_PLAYER_GATE.md).
+
+### v0.4 — player continuity
+
+The same Floorborn lineage can retain explicit companion-specific history, distinguish a recurring companion from a stranger in a later neutral choice, select a non-required future intent because of earlier optional experience, and recover from a hidden negative outcome without resetting.
+
+Companion memory is evidence, not a hidden `trust` or reputation score. Relationship-specific cooperative outcomes stay attached to the observed peer.
+
+Named proof:
 
 ```bash
-npm run live -- new ./floorborn-chat.json
-npm run live -- act ./floorborn-chat.json move:ruins
-npm run live -- show ./floorborn-chat.json
+npm run continuity
 ```
 
-The bridge does not call a model API. The external model is the working chat itself. That keeps the experiment architecture-neutral.
+Evidence: [`evidence/V04_CONTINUITY_GATE.md`](evidence/V04_CONTINUITY_GATE.md).
 
-## v0.3 hidden expedition player gate
+### v0.5 — revisable evidence
 
-The expedition lab removes the single known quest path. Four regions contain a seed-dependent hidden arrangement of:
+Floorborn can retain companion-and-signal-specific support/contradiction receipts and revise its later action in both directions as newer evidence disagrees or agrees.
 
-- two required resonance seals;
-- one optional memory relic;
-- one trap.
+Measured sequence for `chat-001 / route-safe`:
 
-Floorborn receives only visible region tags and legal actions. Item identity and danger remain hidden until inspection. It must explore, learn outcomes, choose where to spend actions, recover two seals, and decide when the goal state justifies going to the gate.
+```text
+fresh                  -> verify independently
+supported 4 / contra 0 -> follow peer
+supported 4 / contra 8 -> verify independently
+supported 16 / contra 8 -> follow peer
+```
 
-The gate verifies that Floorborn completes 16 hidden-layout seeds within a bounded turn budget, different layouts produce different action histories, runs replay exactly, bad prior experience can change a later route, another player's actions can disturb shared state without breaking Floorborn into a fixed script, and explicit goal relevance can outrank an unrelated learned surface aversion when appropriate.
+The evidence does not leak to a stranger or to a different signal from the same companion.
 
-### Blind live expedition with a working chat
+Named proof:
 
 ```bash
-npm run live-expedition -- new ./floorborn-expedition.json
-npm run live-expedition -- act ./floorborn-expedition.json move:grove
-npm run live-expedition -- show ./floorborn-expedition.json
-npm run live-expedition -- verify ./floorborn-expedition.json
+npm run revision
 ```
 
-The raw host snapshot contains engine state needed for resumption and replay and is therefore **not** a player input. A future process/network adapter should structurally isolate that host state from the player instead of relying on the caller not to inspect it.
+Evidence: [`evidence/V05_REVISION_GATE.md`](evidence/V05_REVISION_GATE.md).
 
-The first blind run is preserved at [`evidence/LIVE_EXPEDITION_SESSION_001.md`](evidence/LIVE_EXPEDITION_SESSION_001.md). The v0.3 gate summary is preserved at [`evidence/V03_PLAYER_GATE.md`](evidence/V03_PLAYER_GATE.md).
+### v0.6 — intention lifecycle
 
-## v0.4 player continuity gate
+A self-selected optional intention can now become explicit pending lineage state, survive unrelated later play and snapshot/restore, influence a matching future legal opportunity, and then retire as fulfilled or invalidated.
 
-v0.4 asks a different question: once Floorborn can play, **does its own history remain meaningfully attached to the player lineage?**
-
-### Companion-specific continuity
-
-Floorborn now keeps explicit observations about named companions across sessions. This is not a hidden `trust` or reputation score. The stored evidence is concrete: observed turns, shared sessions, signals seen, place sightings, inventory sightings, and cooperative outcomes that Floorborn actually experienced while that peer was present.
-
-Relationship-specific cooperative/communication outcomes stay attached to the observed companion rather than becoming a universal claim about strangers.
-
-In the named v0.4 proof, after a real shared expedition with `chat-001`, a later neutral campfire choice produces:
+Example lifecycle:
 
 ```text
-remembered chat-001 -> signal:continue-with-peer
-new chat-new        -> signal:finish-journey
+session A: choose seek-relic
+        ↓
+pending intention #1
+        ↓
+session B: unrelated play
+        ↓
+still pending
+        ↓
+session C: relic opportunity
+        ↓
+pursue route + gather relic
+        ↓
+intention #1 = fulfilled
+        ↓
+later interlude: old intention no longer influences choice
 ```
 
-The reunion decision exposes the contributing evidence instead of hiding it inside a weight:
+A fulfilled intention remains inspectable history but does not become an immortal command. If the same intent is later adopted again, it receives a new sequence record rather than resurrecting the retired one. Changed world state may instead retire a pending intention as `invalidated`.
 
-```text
-companion:chat-001=+1.8
-companion-outcome:chat-001=+0.729
+The first v0.6 test incorrectly required Floorborn to automatically want another relic immediately after fulfillment. Floorborn instead chose `finish-journey`. The research gate was repaired in the stricter direction: continuity must not become compulsion.
+
+Named proof:
+
+```bash
+npm run intention
 ```
 
-### Optional self-selected intent
+Evidence: [`evidence/V06_INTENTION_GATE.md`](evidence/V06_INTENTION_GATE.md).
 
-The post-adventure interlude gives fresh and experienced Floorborn lineages the **same legal action menu**. A fresh lineage chooses to finish the journey. A lineage that previously discovered and legally gathered a memory relic instead chooses the optional `seek-relic` intent.
-
-```text
-fresh       -> signal:finish-journey
-relic-lived -> signal:seek-relic
-```
-
-The experienced choice is traceable to retained `relic` evidence plus optional curiosity. This is deliberately a small result. It does not prove open-ended goal invention. It proves a non-required future intent can be selected because of retained game history rather than because the current quest demands it.
-
-### Mistake and recovery
-
-On a deterministic hidden layout, Floorborn initially chooses the Glass Archive and discovers a trap. It does not reset or receive a scripted correction. The negative experience remains in memory, Floorborn returns to camp, chooses the Grove instead, and still completes the same expedition with exact replay.
-
-This matters because a player that can only succeed on clean paths is much less interesting than one that can accumulate consequences and continue.
-
-### Named v0.4 proof
+## Current verification
 
 Requires Node.js 24+ and no external packages.
 
@@ -141,22 +110,26 @@ npm test
 npm run demo
 npm run expedition
 npm run continuity
+npm run revision
+npm run intention
 ```
 
-The verified v0.4 PR head reports **33 tests passed, 0 failed**, and the named continuity harness reports PASS for companion continuity, optional intent, mistake recovery, and exact replay.
-
-The full v0.4 evidence record, including a useful failed experiment and its repaired comparison boundary, is preserved at [`evidence/V04_CONTINUITY_GATE.md`](evidence/V04_CONTINUITY_GATE.md).
+The verified v0.6 PR head reports **44 tests passed, 0 failed**, and all named gates through v0.6 pass in GitHub Actions.
 
 ## What "experience" means here
 
-This is not evidence of consciousness or subjective experience. Here, **experience** means retained causal history: observations, chosen actions, outcomes, repeated patterns, companion-specific evidence, and measurable later behavioral effects.
+This project does not claim consciousness or subjective experience. **Experience** means retained causal history: observations, actions, outcomes, repeated patterns, companion-specific evidence, revisable signal evidence, explicit intentions, and measurable later behavioral effects.
 
-The stronger question is not whether Floorborn can imitate a human. It is whether a machine-floor architecture can become a persistent game participant with its own inspectable history and increasingly nontrivial behavior.
+At v0.6, Floorborn meets this repo's narrower definition of a **bounded operational player with inspectable continuity** inside the RPG laboratory. It is not a claim of human-like understanding or general game-playing intelligence.
+
+## Next research depth
+
+Do not restart the old proofs or scatter into every genre yet. The next useful gate is a longer blind multi-session campaign combining the mechanisms already earned: changing hidden worlds, recurring companion plus stranger, evidence revision, optional intentions, mistake/recovery, session-to-session snapshot continuity, and a campaign-level receipt index showing which earlier events caused later behavior.
+
+Only after that should the same neutral player boundary be transferred into RTS, shooter, survival, puzzle, and other genres. For RTS, internal reasoning may differ while effective APM/action bandwidth is bounded by the game.
 
 ## Repo boundary
 
-`axm-floor-born` owns the machine-as-player experiment: player protocol, Floorborn identity/memory, game adapters, experiments, and evidence.
+`axm-floor-born` owns the machine-as-player experiment: player protocol, Floorborn identity/memory, game adapters, experiments, and evidence. General machine-state discoveries may flow to `axm-state-research` without collapsing the two projects into one.
 
-Machine-state discoveries that generalize beyond play can flow back into `axm-state-research`. The two projects should inform each other without collapsing into one repo.
-
-See [`AGENTS.md`](AGENTS.md) for lane rules and hard constraints, [`docs/FOUNDATION.md`](docs/FOUNDATION.md) for the research foundation, and `evidence/` for replay-backed experiment records.
+See [`AGENTS.md`](AGENTS.md) for lane rules and preserved gates, [`docs/FOUNDATION.md`](docs/FOUNDATION.md) for the research foundation, and `evidence/` for replay-backed records.
