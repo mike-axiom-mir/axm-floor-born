@@ -47,6 +47,20 @@ function adoptSeekRelicIntention(player, sessionId) {
   return interlude;
 }
 
+function fulfillSeekRelicIntention(player, sessionId) {
+  const opportunity = new IntentionOpportunitySession({ sessionId });
+  let action = player.decide(opportunity.observe());
+  assert.equal(action.id, 'signal:pursue-relic-route');
+  let receipt = opportunity.step(action);
+  player.learn(receipt);
+
+  action = player.decide(opportunity.observe());
+  assert.equal(action.id, 'gather:memory-relic');
+  receipt = opportunity.step(action);
+  player.learn(receipt);
+  return opportunity;
+}
+
 test('a self-selected optional intent becomes explicit pending lineage state', () => {
   const player = new FloorbornPlayer({ playerId: 'floorborn-001' });
   teachRelicHistory(player);
@@ -147,23 +161,45 @@ test('changed world state can invalidate a pending intention without deleting it
   assert.equal(invalidated.retiredEventId, 'intent-invalidated:seek-relic');
 });
 
-test('a fulfilled intention can be chosen again later as a new lifecycle rather than resurrecting the retired record', () => {
+test('fulfillment removes the old intention influence instead of forcing the same desire to regenerate', () => {
   const player = new FloorbornPlayer({ playerId: 'floorborn-001' });
   teachRelicHistory(player);
   adoptSeekRelicIntention(player, 'first-intent');
+  fulfillSeekRelicIntention(player, 'first-fulfillment');
 
-  const opportunity = new IntentionOpportunitySession({ sessionId: 'first-fulfillment' });
-  let action = player.decide(opportunity.observe());
-  let receipt = opportunity.step(action);
-  player.learn(receipt);
-  action = player.decide(opportunity.observe());
-  receipt = opportunity.step(action);
-  player.learn(receipt);
+  assert.equal(player.activeIntentions().length, 0);
   assert.equal(player.memory.intentions[0].status, 'fulfilled');
 
-  adoptSeekRelicIntention(player, 'second-intent');
+  const later = new InterludeSession({ sessionId: 'after-first-fulfillment' });
+  const action = player.decide(later.observe());
+  assert.equal(action.id, 'signal:finish-journey');
+  const seekProposal = player.lastDecision.proposals.find(
+    (proposal) => proposal.actionId === 'signal:seek-relic',
+  );
+  assert.equal(seekProposal.evidence.includes('intention:seek-relic=+1.8'), false);
+});
+
+test('a later legal re-adoption creates a new lifecycle record rather than resurrecting the retired one', () => {
+  const player = new FloorbornPlayer({ playerId: 'floorborn-001' });
+  teachRelicHistory(player);
+  adoptSeekRelicIntention(player, 'first-intent-record');
+  fulfillSeekRelicIntention(player, 'first-intent-fulfillment');
+
+  const first = player.memory.intentions[0];
+  assert.equal(first.status, 'fulfilled');
+  assert.equal(player.activeIntentions().length, 0);
+
+  const later = new InterludeSession({ sessionId: 'second-intent-record' });
+  const seekAgain = legalById(later, null, 'signal:seek-relic');
+  const receipt = later.step(seekAgain);
+  player.learn(receipt);
+  player.markSessionComplete(later.sessionId);
+
   assert.equal(player.memory.intentions.length, 2);
   assert.equal(player.memory.intentions[0].status, 'fulfilled');
   assert.equal(player.memory.intentions[1].status, 'pending');
+  assert.equal(player.memory.intentions[1].createdSessionId, 'second-intent-record');
   assert.ok(player.memory.intentions[1].sequence > player.memory.intentions[0].sequence);
+  assert.equal(player.memory.intentions[0].sequence, first.sequence);
+  assert.equal(player.activeIntentions()[0].sequence, player.memory.intentions[1].sequence);
 });
