@@ -1,0 +1,23 @@
+name: floorborn-rts-transfer
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rts-transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run RTS transfer tests
+        run: node --test test/rts.test.js
+      - name: Run named RTS action-budget proof
+        run: node experiments/rts-proof.js
