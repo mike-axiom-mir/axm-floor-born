@@ -46,6 +46,7 @@ assert.equal(v15.player.activeRecoveries().length, 0);
 assert.ok(v15.player.memory.stateGroundedRecoveries.some((entry) => (
   entry.status === 'completed' && entry.retiredEventId.startsWith('stabilized:')
 )));
+assert.ok(v15.player.memory.stateGroundedRecoveries.every((entry) => entry.status !== 'pending'));
 
 const replayed = replayStateRecoveryContestedRts({
   sessionId: 'v15-proof-state-grounded',
@@ -74,7 +75,7 @@ console.log(JSON.stringify({
   recoveryHistory: v15.player.memory.stateGroundedRecoveries,
   replay: 'PASS',
   snapshotRestore: 'PASS',
-  claimBoundary: 'Recovery completion is tied to visible stabilization, not elapsed action windows. Winning is not required.',
+  claimBoundary: 'Recovery completion is tied to visible stabilization. Session closure invalidates unfinished recovery; elapsed windows alone do not complete it.',
 }, null, 2));
 
 function runV14Control(sessionId) {
@@ -127,6 +128,11 @@ function runLoop(game, player, stateGrounded) {
 
   assert.ok(guard < 120, `${stateGrounded ? 'v15' : 'v14'} contest should terminate`);
   assert.equal(game.isComplete(), true);
+
+  player.markSessionComplete(game.sessionId, {
+    turn: game.turn,
+    windowIndex: game.windowIndex,
+  });
 }
 
 function pressureAction(game, playerId) {
