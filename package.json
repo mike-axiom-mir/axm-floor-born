@@ -12,6 +12,6 @@
     "live-expedition": "node experiments/live-expedition.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }
