@@ -38,6 +38,7 @@ export class FloorbornPlayer {
     this.lastDecision = {
       turn: observation.turn,
       peerId: observation.party?.peer?.playerId ?? null,
+      peerSignal: observation.party?.peer?.signal ?? null,
       selectedActionId: selected.id,
       proposals: proposals.map((proposal) => ({
         actionId: proposal.action.id,
@@ -86,7 +87,9 @@ export class FloorbornPlayer {
     const utility = Number(receipt.outcome.utility ?? 0);
     const novelty = Number(receipt.outcome.novelty ?? 0);
     const combinedSignal = utility + novelty * 0.25;
-    const decisionPeerId = this.lastDecision?.turn === receipt.turn ? this.lastDecision.peerId : null;
+    const sameDecision = this.lastDecision?.turn === receipt.turn;
+    const decisionPeerId = sameDecision ? this.lastDecision.peerId : null;
+    const decisionPeerSignal = sameDecision ? this.lastDecision.peerSignal : null;
 
     this.memory.actionsObserved += 1;
     this.memory.recentActionIds.push(receipt.action.id);
@@ -100,7 +103,20 @@ export class FloorbornPlayer {
         novelty: round(novelty),
         tags: [...tags].sort(),
         peerId: decisionPeerId,
+        peerSignal: decisionPeerSignal,
       });
+    }
+
+    if (
+      decisionPeerId
+      && decisionPeerSignal
+      && ['supported', 'contradicted'].includes(receipt.outcome.peerSignalVerdict)
+    ) {
+      const companion = this.memory.companions[decisionPeerId] ?? freshCompanionMemory();
+      const evidence = companion.signalEvidence[decisionPeerSignal] ?? { supported: 0, contradicted: 0 };
+      evidence[receipt.outcome.peerSignalVerdict] += 1;
+      companion.signalEvidence[decisionPeerSignal] = evidence;
+      this.memory.companions[decisionPeerId] = companion;
     }
 
     for (const tag of tags) {
@@ -131,7 +147,7 @@ export class FloorbornPlayer {
 
   snapshot() {
     return stableClone({
-      schema: 'axm.floorborn.memory.v0.4',
+      schema: 'axm.floorborn.memory.v0.5',
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
@@ -144,6 +160,7 @@ export class FloorbornPlayer {
       'axm.floorborn.memory.v0.2',
       'axm.floorborn.memory.v0.3',
       'axm.floorborn.memory.v0.4',
+      'axm.floorborn.memory.v0.5',
     ].includes(snapshot.schema)) {
       throw new Error('unsupported Floorborn snapshot');
     }
@@ -235,6 +252,19 @@ function scoreAction(action, observation, memory) {
         score += learnedCooperation;
         evidence.push(`companion-outcome:${peer.playerId}=+${round(learnedCooperation)}`);
       }
+
+      if (peer.signal) {
+        const signalEvidence = companion.signalEvidence[peer.signal];
+        if (signalEvidence) {
+          const total = signalEvidence.supported + signalEvidence.contradicted;
+          if (total > 0) {
+            const balance = (signalEvidence.supported - signalEvidence.contradicted) / total;
+            const signalWeight = round(balance * 2.4);
+            score += signalWeight;
+            evidence.push(`signal-evidence:${peer.playerId}:${peer.signal}=${signed(signalWeight)}`);
+          }
+        }
+      }
     }
   }
 
@@ -265,6 +295,7 @@ function freshCompanionMemory() {
       count: 0,
       totalSignal: 0,
     },
+    signalEvidence: {},
   };
 }
 
@@ -289,6 +320,12 @@ function normalizeMemory(memory) {
         count: companion.cooperationOutcomes?.count ?? 0,
         totalSignal: companion.cooperationOutcomes?.totalSignal ?? 0,
       },
+      signalEvidence: Object.fromEntries(
+        Object.entries(companion.signalEvidence ?? {}).map(([signal, evidence]) => [signal, {
+          supported: evidence.supported ?? 0,
+          contradicted: evidence.contradicted ?? 0,
+        }]),
+      ),
     };
   }
   return clone;
