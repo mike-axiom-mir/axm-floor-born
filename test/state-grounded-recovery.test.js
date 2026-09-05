@@ -108,6 +108,25 @@ test('window advancement alone does not complete recovery while the group remain
   assert.ok(reentry.evidence.includes('state-recovery-hold:army-alpha=-3'));
 });
 
+test('session closure invalidates unfinished recovery instead of carrying a ghost lifecycle forward', () => {
+  const { game, player } = makeCriticalRetreat('v15-session-close');
+  const recovery = player.activeRecoveries()[0];
+  assert.equal(recovery.status, 'pending');
+
+  player.markSessionComplete('v15-session-close', {
+    turn: game.turn,
+    windowIndex: game.windowIndex,
+  });
+
+  assert.equal(player.activeRecoveries().length, 0);
+  const retired = player.memory.stateGroundedRecoveries[0];
+  assert.equal(retired.status, 'invalidated');
+  assert.equal(retired.retiredEventId, 'state-recovery-invalidated:session-complete');
+  assert.equal(retired.retiredSessionId, 'v15-session-close');
+  assert.equal(retired.retiredTurn, game.turn);
+  assert.equal(retired.retiredWindowIndex, game.windowIndex);
+});
+
 test('state-grounded recovery history survives wrapper snapshot and restore', () => {
   const { game, player } = makeCriticalRetreat('v15-wrapper-restore');
   const restored = StateGroundedRecoveryPlayer.restore(player.snapshot());
@@ -121,7 +140,7 @@ test('state-grounded recovery history survives wrapper snapshot and restore', ()
 
 test('state-recovery world replays exact stabilization and integrity state', () => {
   const { game, player } = makeCriticalRetreat('v15-replay');
-  let observation = game.observe('floorborn-001');
+  const observation = game.observe('floorborn-001');
   const stabilize = player.decide(observation);
   let receipt = game.step('floorborn-001', stabilize);
   player.learn(receipt);
