@@ -1,0 +1,31 @@
+name: floorborn-fog-resume-debug
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  fog-resume-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Print direct and resumed fog state
+        shell: bash
+        run: |
+          set -o pipefail
+          node experiments/fog-resume-debug.js 2>&1 | tee fog-resume-debug.log
+      - name: Upload fog resume diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v16-fog-resume-debug
+          path: fog-resume-debug.log
+          if-no-files-found: error
