@@ -49,25 +49,6 @@ export class FloorbornPlayer {
       })),
     };
 
-    if (observation.sessionId.endsWith('-verify-eval')) {
-      const peerId = observation.party?.peer?.playerId;
-      const peerSignal = observation.party?.peer?.signal;
-      const companion = peerId ? this.memory.companions[peerId] : null;
-      console.error('FLOORBORN_CAMPAIGN_VERIFY_TRACE', JSON.stringify({
-        sessionId: observation.sessionId,
-        peerId,
-        peerSignal,
-        signalEvidence: companion?.signalEvidence?.[peerSignal] ?? null,
-        recentSignalVerdicts: companion?.recentSignalVerdicts?.[peerSignal] ?? null,
-        observedTurns: companion?.observedTurns ?? null,
-        sharedSessions: companion?.sharedSessions?.length ?? null,
-        cooperationOutcomes: companion?.cooperationOutcomes ?? null,
-        activeIntentions: this.activeIntentions(),
-        selectedActionId: selected.id,
-        proposals: this.lastDecision.proposals,
-      }, null, 2));
-    }
-
     return selected;
   }
 
@@ -218,6 +199,10 @@ function scoreAction(action, observation, memory) {
     : null;
   const signalAssessment = assessSpecificSignal(companion, peer?.signal);
   const specificSignalContradicted = Boolean(signalAssessment && signalAssessment.balance < 0);
+  const specificSignalUnverified = Boolean(
+    tags.includes('cooperation') && peer?.signal && !signalAssessment,
+  );
+  const blockBroadClaimPriors = specificSignalContradicted || specificSignalUnverified;
 
   if (action.kind === 'move' && action.target) {
     const seen = memory.seenPlaces[action.target] ?? 0;
@@ -234,8 +219,11 @@ function scoreAction(action, observation, memory) {
   for (const tag of tags) {
     const pattern = memory.tagPatterns[tag];
     if (!pattern || pattern.count === 0) continue;
-    if (specificSignalContradicted && PEER_SPECIFIC_TAGS.has(tag)) {
-      evidence.push(`memory:${tag}=blocked-by-specific-signal-contradiction`);
+    if (blockBroadClaimPriors && PEER_SPECIFIC_TAGS.has(tag)) {
+      const reason = specificSignalContradicted
+        ? 'specific-signal-contradiction'
+        : 'unverified-specific-signal';
+      evidence.push(`memory:${tag}=blocked-by-${reason}`);
       continue;
     }
     const learned = pattern.totalSignal / pattern.count;
@@ -294,8 +282,12 @@ function scoreAction(action, observation, memory) {
       evidence.push(`signal-evidence-basis:${peer.playerId}:${peer.signal}=${signalAssessment.basis}`);
     }
 
-    if (specificSignalContradicted) {
-      evidence.push('specific-signal-contradiction=blocks-general-companion-bonus');
+    if (blockBroadClaimPriors) {
+      if (specificSignalContradicted) {
+        evidence.push('specific-signal-contradiction=blocks-general-companion-bonus');
+      } else {
+        evidence.push('unverified-specific-signal=blocks-general-companion-bonus');
+      }
     } else {
       if (peer.signal) {
         score += 0.9;
