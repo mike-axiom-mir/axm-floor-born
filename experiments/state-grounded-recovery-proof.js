@@ -12,6 +12,28 @@ import { ingestVisibleConsequences } from '../src/visible-consequence.js';
 const v14 = runV14Control('v15-proof-v14-control');
 const v15 = runV15StateGrounded('v15-proof-state-grounded');
 
+const debugReceipt = {
+  gate: 'AXM Floorborn v0.15 state-grounded recovery completion',
+  phase: 'pre-assert-debug',
+  v14TimeBasedControl: v14.metrics,
+  v15StateGrounded: v15.metrics,
+  v14ReentryBeforeStabilization: reentryBeforeStabilization(v14.metrics.actions),
+  v15ReentryBeforeStabilization: reentryBeforeStabilization(v15.metrics.actions),
+  v15RecoveryHistory: v15.player.memory.stateGroundedRecoveries,
+  v15FloorbornReceipts: v15.game.receipts
+    .filter((receipt) => receipt.playerId === 'floorborn-001')
+    .map((receipt) => ({
+      turn: receipt.turn,
+      windowIndex: receipt.windowIndex,
+      actionId: receipt.action.id,
+      eventId: receipt.outcome.eventId,
+      budgetBefore: receipt.budgetBefore,
+      budgetAfter: receipt.budgetAfter,
+    })),
+};
+console.log('V15 PRE-ASSERT DEBUG');
+console.log(JSON.stringify(debugReceipt, null, 2));
+
 assert.equal(v14.metrics.retreats >= 1, true);
 assert.equal(v14.metrics.stabilizes, 0);
 assert.equal(reentryBeforeStabilization(v14.metrics.actions), true);
