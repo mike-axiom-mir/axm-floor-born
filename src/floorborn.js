@@ -23,6 +23,7 @@ export class FloorbornPlayer {
 
   decide(observation) {
     validateObservation(observation);
+    this.observeContext(observation);
 
     const proposals = observation.legalActions.map((action) => scoreAction(action, observation, this.memory));
     proposals.sort((a, b) => {
@@ -44,6 +45,35 @@ export class FloorbornPlayer {
     };
 
     return selected;
+  }
+
+  observeContext(observation) {
+    validateObservation(observation);
+    const key = `${observation.sessionId}:${observation.turn}:${observation.self.playerId}`;
+    if (this.memory.observedContextKeys.includes(key)) return false;
+
+    this.memory.observedContextKeys.push(key);
+    if (this.memory.observedContextKeys.length > 256) this.memory.observedContextKeys.shift();
+
+    const peer = observation.party?.peer;
+    if (!peer?.playerId) return true;
+
+    const companion = this.memory.companions[peer.playerId] ?? freshCompanionMemory();
+    companion.observedTurns += 1;
+    if (!companion.sharedSessions.includes(observation.sessionId)) {
+      companion.sharedSessions.push(observation.sessionId);
+    }
+    if (peer.signal) {
+      companion.signalsSeen[peer.signal] = (companion.signalsSeen[peer.signal] ?? 0) + 1;
+    }
+    if (peer.placeId) {
+      companion.placeSightings[peer.placeId] = (companion.placeSightings[peer.placeId] ?? 0) + 1;
+    }
+    if (Array.isArray(peer.inventory) && peer.inventory.length > 0) {
+      companion.inventorySightings += peer.inventory.length;
+    }
+    this.memory.companions[peer.playerId] = companion;
+    return true;
   }
 
   learn(receipt) {
@@ -87,7 +117,7 @@ export class FloorbornPlayer {
 
   snapshot() {
     return stableClone({
-      schema: 'axm.floorborn.memory.v0.2',
+      schema: 'axm.floorborn.memory.v0.3',
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
@@ -95,7 +125,11 @@ export class FloorbornPlayer {
   }
 
   static restore(snapshot) {
-    if (!snapshot || !['axm.floorborn.memory.v0.1', 'axm.floorborn.memory.v0.2'].includes(snapshot.schema)) {
+    if (!snapshot || ![
+      'axm.floorborn.memory.v0.1',
+      'axm.floorborn.memory.v0.2',
+      'axm.floorborn.memory.v0.3',
+    ].includes(snapshot.schema)) {
       throw new Error('unsupported Floorborn snapshot');
     }
     return new FloorbornPlayer({
@@ -148,9 +182,24 @@ function scoreAction(action, observation, memory) {
     evidence.push('goal-relevance=+3');
   }
 
-  if (tags.includes('cooperation') && observation.party?.peer?.signal) {
+  const peer = observation.party?.peer;
+  if (tags.includes('cooperation') && peer?.signal) {
     score += 0.9;
     evidence.push('peer-signal=+0.9');
+  }
+
+  if (tags.includes('cooperation') && peer?.playerId) {
+    const companion = memory.companions[peer.playerId];
+    if (companion) {
+      const familiarity = Math.min(
+        1.8,
+        companion.observedTurns * 0.22 + companion.sharedSessions.length * 0.25,
+      );
+      if (familiarity > 0) {
+        score += familiarity;
+        evidence.push(`companion:${peer.playerId}=+${round(familiarity)}`);
+      }
+    }
   }
 
   return { action, score, evidence };
@@ -164,6 +213,18 @@ function freshMemory() {
     tagPatterns: {},
     seenPlaces: {},
     recentActionIds: [],
+    companions: {},
+    observedContextKeys: [],
+  };
+}
+
+function freshCompanionMemory() {
+  return {
+    observedTurns: 0,
+    sharedSessions: [],
+    signalsSeen: {},
+    placeSightings: {},
+    inventorySightings: 0,
   };
 }
 
@@ -175,6 +236,17 @@ function normalizeMemory(memory) {
   clone.tagPatterns ??= {};
   clone.seenPlaces ??= {};
   clone.recentActionIds ??= [];
+  clone.companions ??= {};
+  clone.observedContextKeys ??= [];
+  for (const [peerId, companion] of Object.entries(clone.companions)) {
+    clone.companions[peerId] = {
+      ...freshCompanionMemory(),
+      ...companion,
+      sharedSessions: [...(companion.sharedSessions ?? [])],
+      signalsSeen: { ...(companion.signalsSeen ?? {}) },
+      placeSightings: { ...(companion.placeSightings ?? {}) },
+    };
+  }
   return clone;
 }
 
