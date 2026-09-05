@@ -12,7 +12,7 @@ One chat = one PR lane. Do not scatter work across unrelated branches or reposit
 - No privileged engine truth for Floorborn. If a human player cannot observe hidden state through the player interface, Floorborn does not receive it either.
 - Baseline Floorborn stays non-neural. A neural player may participate as a peer player, never as a hidden chooser inside Floorborn.
 - Do not claim consciousness or subjective experience. "Experience" here means retained causal history: observed state, chosen action, outcome, and later behavioral effect.
-- Growth must be inspectable. Prefer explicit episodic/pattern/companion/intention state and evidence over opaque self-modification.
+- Growth must be inspectable. Prefer explicit episodic/pattern/companion/intention/recovery state and evidence over opaque self-modification.
 - Receipts and deterministic replay are first-class. Claims require replayable evidence.
 - State-research findings may flow to `axm-state-research`, but this repo owns the machine-as-player experiment.
 - No automatic canon or merge. Passing tests are evidence, not permission to silently declare the architecture final.
@@ -25,6 +25,10 @@ One chat = one PR lane. Do not scatter work across unrelated branches or reposit
 - Preserve lifetime evidence and recent specific evidence as separate timescales. Recent consistent receipts may revise current stance without deleting historical counts.
 - RTS equality means equal external effective-action bandwidth, not fake strict alternation. A player that still owns budget may keep legal command opportunities while another player is exhausted or yielded.
 - RTS command cost is based on independently retasked groups/effects, not API packet count. Do not allow a giant payload to masquerade as one APM action.
+- What Floorborn does and what the world/another player visibly does to Floorborn are distinct causal channels. Do not rewrite incoming consequences as self-caused action receipts.
+- Present-state relevance and retained history are distinct. A current state may make an affordance relevant without dictating the choice; retained history may then change how that affordance competes.
+- Experimental perspectives that would alter a frozen baseline must be explicit and opt-in. Do not silently rewrite old evidence when adding a new perspective.
+- Recovery is a lifecycle/state, not merely a one-step action. If future work adds persistent recovery state, it must be explicit, group-specific, bounded, inspectable, and deterministically retired or invalidated. Never hide it as an unexplained cooldown or permanent defensive bias.
 
 ## Preserved gates
 
@@ -148,38 +152,117 @@ Named proof:
 npm run shared-rts
 ```
 
-Live bridge:
-
-```bash
-npm run live-shared-rts -- new FILE
-npm run live-shared-rts -- act FILE ACTION_ID
-npm run live-shared-rts -- show FILE
-npm run live-shared-rts -- reveal FILE
-npm run live-shared-rts -- verify FILE
-```
-
 Evidence:
 - `evidence/V09_SHARED_RTS_GATE.md`
 - `evidence/LIVE_SHARED_RTS_SESSION_001.md`
 
-## Current depth after v0.9: contested RTS play
-Do not expand into a large RTS yet. Add consequence before content.
+### v0.10 contested RTS baseline
+Must remain passing and behaviorally frozen when new experimental perspectives are disabled:
+1. same 24-effective-APM boundary and independent budgets;
+2. player-specific fog and deterministic line-of-sight;
+3. deterministic integrity, fortification, damage, destruction, retreat affordance, and center-control scoring;
+4. no hardcoded aggressive/defensive personality;
+5. exact combat/control replay;
+6. original measured Floorborn baseline remains available: 3 attacks, 1 fortify, 0 retreats, 2 moves, 1 scout, 1 yield; both own combat groups destroyed; 1-1 draw;
+7. failed fog run #216 remains evidence that equal APM is not strict alternation.
 
-### v0.10 target: contested RTS encounter
-Build a tiny deterministic contested RTS world where two equal player slots can make choices that materially constrain, damage, displace, reveal, or protect the other side.
+Named proof:
+
+```bash
+npm run contested-rts
+```
+
+Evidence: `evidence/V10_CONTESTED_RTS_GATE.md`.
+
+### v0.11 visible incoming consequence intake
+Must remain passing:
+1. opponent/world-caused visible consequences are a causal channel distinct from Floorborn's own action receipts;
+2. incoming events appear only in the affected player's bounded observation;
+3. host-only doctrine never enters the consequence event;
+4. event keys deduplicate repeated reads;
+5. retained incoming consequence records survive Floorborn snapshot/restore;
+6. incoming negative combat evidence can alter the score of the same later legal combat action;
+7. no fear/pain/anger/trust or other unsupported subjective label is inferred;
+8. exact consequence-world replay uses stable semantic serialization;
+9. first replay red remains evidence that key insertion order is not causal state.
+
+Named proof:
+
+```bash
+npm run consequence
+```
+
+Evidence: `evidence/V11_VISIBLE_CONSEQUENCE_GATE.md`.
+
+### v0.12 critical-state recovery perspective
+Must remain passing:
+1. `criticalRecovery` is explicit and opt-in; historical/default Floorborn keeps it off;
+2. v0.10 baseline remains unchanged when off;
+3. when on, a legal recovery action affecting an own center combat group at visible integrity 1 receives `critical-state-recovery:<group>=+3`;
+4. present critical state alone makes recovery competitive but does not force retreat;
+5. one real retained incoming damage event can tip the same later critical state from attack to retreat;
+6. the perspective configuration and incoming consequence memory survive snapshot/restore;
+7. no permanent defensive personality is created;
+8. exact world replay remains passing.
+
+Named proof:
+
+```bash
+npm run recovery
+```
+
+Evidence: `evidence/V12_RECOVERY_PERSPECTIVE_GATE.md`.
+
+### v0.13 integrated contested adaptation
+Must remain passing:
+1. same deterministic pressure peer and contested rules as the frozen v0.10 baseline;
+2. adapted player uses `ConsequenceContestedRtsSession`, visible-consequence intake before each Floorborn decision, and opt-in `criticalRecovery`;
+3. v0.10 baseline remains 0 retreats;
+4. adapted full-fight action history differs causally from baseline;
+5. adapted run produces at least one legal recovery action from the earned v0.11/v0.12 interaction;
+6. exact adapted combat replay passes;
+7. strategic improvement is not required and must not be silently claimed;
+8. measured v0.13 result is preserved: one retreat, then immediate re-entry of the same beta army, both own combat groups still destroyed, own control still 1, opponent control rises to 2, result worsens from draw to loss;
+9. all four incoming combat consequences remain inspectable in adapted memory;
+10. this negative result remains evidence that a recovery action is not yet a recovery lifecycle.
+
+Named proof:
+
+```bash
+npm run adapted-contest
+```
+
+Evidence: `evidence/V13_INTEGRATED_CONTEST_ADAPTATION_GATE.md`.
+
+## Current depth after v0.13: recovery lifecycle
+Do not enlarge the RTS and do not simply increase retreat weight.
+
+### v0.14 target: bounded group-specific recovery lifecycle
+The v0.13 seam is:
+
+```text
+retreat army-beta to base
+-> next ordinary positioning opportunity
+-> move the same damaged beta immediately back to center
+```
+
+Test an explicit short-horizon recovery state rather than a stronger retreat rule.
 
 Hard constraints:
-1. preserve independent equal effective-APM budgets;
-2. preserve player-specific fog and the same legal command-cost rules;
-3. introduce one shared contested objective or deterministic combat/contact system;
-4. positioning, scouting, attack/defend/retreat choices must have replayable consequences;
-5. one player's action must be able to change the other player's later legal choices or world state through ordinary game rules;
-6. do not hardcode aggressive/defensive personalities into Floorborn;
-7. allow mistakes and recovery rather than ending the experiment on first bad move;
-8. do not make winning the only metric; record agency allocation, information gathering, positioning, losses, recovery, and objective pressure;
-9. any combat resolution must be deterministic from visible/receipt-backed game state;
-10. no player may issue more external effective actions than its own budget permits;
-11. exact shared-world replay must include combat/state consequences;
-12. once the deterministic gate is green, let a working chat occupy the peer slot through the same live boundary.
+1. recovery lifecycle is an explicit experimental capability/perspective and defaults off;
+2. v0.10 baseline remains frozen when off;
+3. v0.12 same-state A/B result remains frozen;
+4. a retreat caused by the recovery path may create an inspectable pending recovery record tied to the affected group;
+5. the record must include session/turn/window provenance and source action/outcome;
+6. while pending in the same bounded action window, immediate center re-entry by that same group may receive temporary negative relevance;
+7. recovery state must not penalize unrelated groups;
+8. recovery state must retire deterministically at a clear boundary, preferably completion of the action window for this first test;
+9. destroyed/missing/incompatible group state must invalidate the lifecycle rather than leave a ghost record;
+10. if the player overrides recovery anyway, the override must be recorded/retired rather than silently keeping a stale state;
+11. lifecycle history remains inspectable after retirement but stops influencing arbitration;
+12. snapshot/restore must preserve pending and retired recovery records exactly;
+13. exact combat/world replay must remain passing;
+14. compare against v0.13: immediate retreat->re-entry should change, but winning/preserving units is not required;
+15. do not hide this as a game-engine cooldown. The state belongs to the Floorborn player lineage and must be visible in its inspectable memory.
 
-Do not optimize for winning. The research target is what kind of player a machine-floor architecture becomes when it can participate, accumulate and revise history, carry and retire intentions, recover, transfer across genres, spend bounded agency, and face another independent player under the same world-facing rules.
+Do not optimize for winning. The research target is what kind of player a machine-floor architecture becomes when player-visible consequences, current state, retained history, and short-lived self-selected recovery state interact under the same external world rules as other players.
