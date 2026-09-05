@@ -91,6 +91,8 @@ The player gate currently checks that:
 - goal relevance is represented separately from learned surface associations, preventing a bad experience with an `ancient` place from automatically blocking an `ancient` goal location;
 - recent-action pressure reduces simple loops without erasing long-term memory.
 
+Requires Node.js 24+ and no external packages.
+
 Run the autonomous gate with:
 
 ```bash
