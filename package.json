@@ -8,7 +8,8 @@
     "test": "node --test",
     "demo": "node experiments/first-proof.js",
     "live": "node experiments/live-chat-coop.js",
-    "expedition": "node experiments/expedition-proof.js"
+    "expedition": "node experiments/expedition-proof.js",
+    "live-expedition": "node experiments/live-expedition.js"
   },
   "engines": {
     "node": ">=20"
