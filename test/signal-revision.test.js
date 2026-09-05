@@ -71,6 +71,38 @@ test('contradicted companion signal evidence can make Floorborn verify instead',
   assert.equal(result.action.id, 'inspect:verify-current');
   const proposal = result.decision.proposals.find((item) => item.actionId === 'signal:follow-peer');
   assert.ok(proposal.evidence.includes('signal-evidence:chat-001:route-safe=-2.4'));
+  assert.ok(proposal.evidence.includes('specific-signal-contradiction=blocks-general-companion-bonus'));
+});
+
+test('specific contradicted signal evidence outranks large broad familiarity with the same companion', () => {
+  const player = new FloorbornPlayer({ playerId: 'floorborn-001' });
+  train(player, { actualSafe: true, count: 4, prefix: 'broad-support' });
+
+  for (let index = 0; index < 10; index += 1) {
+    const result = evaluate(player, { sessionId: `broad-positive-follow-${index}` });
+    assert.equal(result.action.id, 'signal:follow-peer');
+    const receipt = result.game.step(result.action);
+    player.learn(receipt);
+    player.markSessionComplete(result.game.sessionId);
+  }
+
+  const companionBeforeContradiction = player.memory.companions['chat-001'];
+  assert.ok(companionBeforeContradiction.observedTurns >= 14);
+  assert.ok(companionBeforeContradiction.cooperationOutcomes.count >= 10);
+
+  train(player, { actualSafe: false, count: 30, prefix: 'specific-contradiction' });
+  const signalEvidence = player.memory.companions['chat-001'].signalEvidence['route-safe'];
+  assert.ok(signalEvidence.contradicted > signalEvidence.supported);
+
+  const result = evaluate(player, { sessionId: 'specific-over-broad-eval' });
+  assert.equal(result.action.id, 'inspect:verify-current');
+
+  const follow = result.decision.proposals.find((item) => item.actionId === 'signal:follow-peer');
+  assert.ok(follow.evidence.some((line) => line.startsWith('signal-evidence:chat-001:route-safe=-')));
+  assert.ok(follow.evidence.includes('specific-signal-contradiction=blocks-general-companion-bonus'));
+  assert.equal(follow.evidence.some((line) => line === 'peer-signal=+0.9'), false);
+  assert.equal(follow.evidence.some((line) => line.startsWith('companion:chat-001=+')), false);
+  assert.equal(follow.evidence.some((line) => line.startsWith('companion-outcome:chat-001=+')), false);
 });
 
 test('later contradictory and supporting evidence can revise the same signal memory in both directions', () => {
