@@ -23,3 +23,5 @@ jobs:
         run: npm run rts
       - name: Run named shared RTS player-slots proof
         run: npm run shared-rts
+      - name: Run first live working-chat shared RTS session
+        run: node experiments/live-shared-rts-session-001.js
