@@ -1,6 +1,6 @@
 {
   "name": "axm-floor-born",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "Deterministic machine-floor operational-player research lab.",
@@ -11,7 +11,8 @@
     "expedition": "node experiments/expedition-proof.js",
     "live-expedition": "node experiments/live-expedition.js",
     "continuity": "node experiments/continuity-proof.js",
-    "revision": "node experiments/revision-proof.js"
+    "revision": "node experiments/revision-proof.js",
+    "intention": "node experiments/intention-proof.js"
   },
   "engines": {
     "node": ">=24"
