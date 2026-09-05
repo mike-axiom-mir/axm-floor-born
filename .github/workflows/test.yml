@@ -25,3 +25,5 @@ jobs:
         run: npm run expedition
       - name: Run continuity player gate
         run: npm run continuity
+      - name: Run evidence revision gate
+        run: npm run revision
