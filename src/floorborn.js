@@ -9,6 +9,8 @@ const BASE_KIND_SCORE = Object.freeze({
   wait: 0.0,
 });
 const PEER_SPECIFIC_TAGS = new Set(['cooperation', 'communication']);
+const RECENT_SIGNAL_STREAK = 4;
+const RECENT_SIGNAL_HISTORY_LIMIT = 8;
 
 export class FloorbornPlayer {
   constructor({
@@ -115,9 +117,16 @@ export class FloorbornPlayer {
       && ['supported', 'contradicted'].includes(receipt.outcome.peerSignalVerdict)
     ) {
       const companion = this.memory.companions[decisionPeerId] ?? freshCompanionMemory();
+      const verdict = receipt.outcome.peerSignalVerdict;
       const evidence = companion.signalEvidence[decisionPeerSignal] ?? { supported: 0, contradicted: 0 };
-      evidence[receipt.outcome.peerSignalVerdict] += 1;
+      evidence[verdict] += 1;
       companion.signalEvidence[decisionPeerSignal] = evidence;
+
+      const recent = companion.recentSignalVerdicts[decisionPeerSignal] ?? [];
+      recent.push(verdict);
+      if (recent.length > RECENT_SIGNAL_HISTORY_LIMIT) recent.shift();
+      companion.recentSignalVerdicts[decisionPeerSignal] = recent;
+
       this.memory.companions[decisionPeerId] = companion;
     }
 
@@ -153,7 +162,7 @@ export class FloorbornPlayer {
 
   snapshot() {
     return stableClone({
-      schema: 'axm.floorborn.memory.v0.6',
+      schema: 'axm.floorborn.memory.v0.7',
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
@@ -168,6 +177,7 @@ export class FloorbornPlayer {
       'axm.floorborn.memory.v0.4',
       'axm.floorborn.memory.v0.5',
       'axm.floorborn.memory.v0.6',
+      'axm.floorborn.memory.v0.7',
     ].includes(snapshot.schema)) {
       throw new Error('unsupported Floorborn snapshot');
     }
@@ -262,6 +272,7 @@ function scoreAction(action, observation, memory) {
     if (signalAssessment) {
       score += signalAssessment.weight;
       evidence.push(`signal-evidence:${peer.playerId}:${peer.signal}=${signed(signalAssessment.weight)}`);
+      evidence.push(`signal-evidence-basis:${peer.playerId}:${peer.signal}=${signalAssessment.basis}`);
     }
 
     if (specificSignalContradicted) {
@@ -305,10 +316,31 @@ function assessSpecificSignal(companion, signal) {
   if (!signalEvidence) return null;
   const total = signalEvidence.supported + signalEvidence.contradicted;
   if (total <= 0) return null;
-  const balance = (signalEvidence.supported - signalEvidence.contradicted) / total;
+
+  const lifetimeBalance = (signalEvidence.supported - signalEvidence.contradicted) / total;
+  const recent = companion.recentSignalVerdicts[signal] ?? [];
+  const tail = recent.slice(-RECENT_SIGNAL_STREAK);
+
+  if (tail.length === RECENT_SIGNAL_STREAK && tail.every((verdict) => verdict === 'contradicted')) {
+    return {
+      balance: -1,
+      weight: -2.4,
+      basis: 'recent-contradiction-streak',
+    };
+  }
+
+  if (tail.length === RECENT_SIGNAL_STREAK && tail.every((verdict) => verdict === 'supported')) {
+    return {
+      balance: 1,
+      weight: 2.4,
+      basis: 'recent-support-streak',
+    };
+  }
+
   return {
-    balance,
-    weight: round(balance * 2.4),
+    balance: lifetimeBalance,
+    weight: round(lifetimeBalance * 2.4),
+    basis: 'lifetime-balance',
   };
 }
 
@@ -405,6 +437,7 @@ function freshCompanionMemory() {
       totalSignal: 0,
     },
     signalEvidence: {},
+    recentSignalVerdicts: {},
   };
 }
 
@@ -443,6 +476,9 @@ function normalizeMemory(memory) {
           supported: evidence.supported ?? 0,
           contradicted: evidence.contradicted ?? 0,
         }]),
+      ),
+      recentSignalVerdicts: Object.fromEntries(
+        Object.entries(companion.recentSignalVerdicts ?? {}).map(([signal, verdicts]) => [signal, [...verdicts]]),
       ),
     };
   }
