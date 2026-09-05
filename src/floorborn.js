@@ -56,6 +56,9 @@ export class FloorbornPlayer {
     const combinedSignal = utility + novelty * 0.25;
 
     this.memory.actionsObserved += 1;
+    this.memory.recentActionIds.push(receipt.action.id);
+    if (this.memory.recentActionIds.length > 8) this.memory.recentActionIds.shift();
+
     if (receipt.outcome.eventId) {
       this.memory.episodes.push({
         eventId: receipt.outcome.eventId,
@@ -84,7 +87,7 @@ export class FloorbornPlayer {
 
   snapshot() {
     return stableClone({
-      schema: 'axm.floorborn.memory.v0.1',
+      schema: 'axm.floorborn.memory.v0.2',
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
@@ -92,7 +95,9 @@ export class FloorbornPlayer {
   }
 
   static restore(snapshot) {
-    if (!snapshot || snapshot.schema !== 'axm.floorborn.memory.v0.1') throw new Error('unsupported Floorborn snapshot');
+    if (!snapshot || !['axm.floorborn.memory.v0.1', 'axm.floorborn.memory.v0.2'].includes(snapshot.schema)) {
+      throw new Error('unsupported Floorborn snapshot');
+    }
     return new FloorbornPlayer({
       playerId: snapshot.playerId,
       lineageId: snapshot.lineageId,
@@ -111,8 +116,9 @@ function scoreAction(action, observation, memory) {
       score += 1.0;
       evidence.push('curiosity:unseen-place=+1');
     } else {
-      score -= Math.min(0.5, seen * 0.1);
-      evidence.push(`familiarity:${seen}=-${round(Math.min(0.5, seen * 0.1))}`);
+      const penalty = Math.min(0.5, seen * 0.1);
+      score -= penalty;
+      evidence.push(`familiarity:${seen}=-${round(penalty)}`);
     }
   }
 
@@ -130,6 +136,23 @@ function scoreAction(action, observation, memory) {
     evidence.push('curiosity:unknown-place=+0.75');
   }
 
+  const repeats = memory.recentActionIds.filter((id) => id === action.id).length;
+  if (repeats) {
+    const penalty = Math.min(1.5, repeats * 0.35);
+    score -= penalty;
+    evidence.push(`repetition:${repeats}=-${round(penalty)}`);
+  }
+
+  if (tags.includes('goal')) {
+    score += 3.0;
+    evidence.push('goal-relevance=+3');
+  }
+
+  if (tags.includes('cooperation') && observation.party?.peer?.signal) {
+    score += 0.9;
+    evidence.push('peer-signal=+0.9');
+  }
+
   return { action, score, evidence };
 }
 
@@ -140,6 +163,7 @@ function freshMemory() {
     episodes: [],
     tagPatterns: {},
     seenPlaces: {},
+    recentActionIds: [],
   };
 }
 
@@ -150,6 +174,7 @@ function normalizeMemory(memory) {
   clone.episodes ??= [];
   clone.tagPatterns ??= {};
   clone.seenPlaces ??= {};
+  clone.recentActionIds ??= [];
   return clone;
 }
 
