@@ -49,6 +49,14 @@ export class ConsequenceContestedRtsSession extends ContestedRtsSession {
       visibleEventsByPlayer: stableClone(this.visibleEventsByPlayer ?? {}),
     };
   }
+
+  restoreSnapshot(snapshot) {
+    super.restoreSnapshot(snapshot);
+    this.visibleEventsByPlayer = stableClone(
+      snapshot.visibleEventsByPlayer
+      ?? Object.fromEntries(this.playerIds.map((playerId) => [playerId, []])),
+    );
+  }
 }
 
 export function replayConsequenceContestedRts({
