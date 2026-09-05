@@ -182,6 +182,16 @@ function scoreAction(action, observation, memory) {
     evidence.push('goal-relevance=+3');
   }
 
+  if (tags.includes('completion')) {
+    score += 0.8;
+    evidence.push('completion-bias=+0.8');
+  }
+
+  if (tags.includes('optional')) {
+    score += 0.4;
+    evidence.push('optional-curiosity=+0.4');
+  }
+
   const peer = observation.party?.peer;
   if (tags.includes('cooperation') && peer?.signal) {
     score += 0.9;
