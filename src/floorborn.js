@@ -182,6 +182,13 @@ export class FloorbornPlayer {
 function scoreAction(action, observation, memory) {
   let score = BASE_KIND_SCORE[action.kind] ?? 0;
   const evidence = [`base:${action.kind}=${round(score)}`];
+  const tags = action.affordanceTags ?? [];
+  const peer = observation.party?.peer;
+  const companion = tags.includes('cooperation') && peer?.playerId
+    ? memory.companions[peer.playerId]
+    : null;
+  const signalAssessment = assessSpecificSignal(companion, peer?.signal);
+  const specificSignalContradicted = Boolean(signalAssessment && signalAssessment.balance < 0);
 
   if (action.kind === 'move' && action.target) {
     const seen = memory.seenPlaces[action.target] ?? 0;
@@ -195,10 +202,13 @@ function scoreAction(action, observation, memory) {
     }
   }
 
-  const tags = action.affordanceTags ?? [];
   for (const tag of tags) {
     const pattern = memory.tagPatterns[tag];
     if (!pattern || pattern.count === 0) continue;
+    if (specificSignalContradicted && PEER_SPECIFIC_TAGS.has(tag)) {
+      evidence.push(`memory:${tag}=blocked-by-specific-signal-contradiction`);
+      continue;
+    }
     const learned = pattern.totalSignal / pattern.count;
     score += learned;
     evidence.push(`memory:${tag}=${signed(round(learned))}`);
@@ -248,23 +258,10 @@ function scoreAction(action, observation, memory) {
     }
   }
 
-  const peer = observation.party?.peer;
   if (tags.includes('cooperation') && peer?.playerId) {
-    const companion = memory.companions[peer.playerId];
-    let specificSignalContradicted = false;
-
-    if (companion && peer.signal) {
-      const signalEvidence = companion.signalEvidence[peer.signal];
-      if (signalEvidence) {
-        const total = signalEvidence.supported + signalEvidence.contradicted;
-        if (total > 0) {
-          const balance = (signalEvidence.supported - signalEvidence.contradicted) / total;
-          const signalWeight = round(balance * 2.4);
-          score += signalWeight;
-          evidence.push(`signal-evidence:${peer.playerId}:${peer.signal}=${signed(signalWeight)}`);
-          specificSignalContradicted = balance < 0;
-        }
-      }
+    if (signalAssessment) {
+      score += signalAssessment.weight;
+      evidence.push(`signal-evidence:${peer.playerId}:${peer.signal}=${signed(signalAssessment.weight)}`);
     }
 
     if (specificSignalContradicted) {
@@ -300,6 +297,19 @@ function scoreAction(action, observation, memory) {
   }
 
   return { action, score, evidence };
+}
+
+function assessSpecificSignal(companion, signal) {
+  if (!companion || !signal) return null;
+  const signalEvidence = companion.signalEvidence[signal];
+  if (!signalEvidence) return null;
+  const total = signalEvidence.supported + signalEvidence.contradicted;
+  if (total <= 0) return null;
+  const balance = (signalEvidence.supported - signalEvidence.contradicted) / total;
+  return {
+    balance,
+    weight: round(balance * 2.4),
+  };
 }
 
 function updateIntentions(memory, receipt, decisionPeerId) {
