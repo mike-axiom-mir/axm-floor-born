@@ -4,7 +4,11 @@
 
 Floorborn is an AXM experiment in giving a deterministic machine-floor architecture a bounded player slot in a game, rather than wrapping a conventional neural game-playing agent around it.
 
-The first proof is intentionally tiny: a deterministic RPG laboratory where Floorborn can observe only player-visible state, choose only legal actions, receive replayable outcomes, retain its own explicit memory, and let earlier game experience change a later choice.
+The project deliberately separates three claims:
+
+1. **v0.1:** Floorborn can occupy a bounded player slot and let retained experience change a later legal choice.
+2. **v0.2:** Floorborn and an external working chat can independently cooperate inside one shared replayable RPG world.
+3. **v0.3:** Floorborn can handle a broader hidden-layout expedition without a fixed action script, recover from changing world state, and carry learned preferences into later sessions.
 
 ## Root principle
 
@@ -12,7 +16,7 @@ The first proof is intentionally tiny: a deterministic RPG laboratory where Floo
 
 Humans, neural models, Floorborn, and future player architectures may think in radically different ways. The game enforces equality at the interaction boundary: visibility, legal actions, consequences, and genre-specific action/APM/deadline limits.
 
-## v0.1 proof
+## v0.1 bounded player proof
 
 ```text
 bounded observation
@@ -34,16 +38,7 @@ receipt + persistent experience
       +----> later decision can change
 ```
 
-No neural model is used in the v0.1 chooser.
-
-### Run it
-
-Requires Node.js 20+ and no external packages.
-
-```bash
-npm test
-npm run demo
-```
+No neural model is used in the Floorborn chooser.
 
 Expected first-proof behavior:
 
@@ -52,11 +47,9 @@ Expected first-proof behavior:
 - the decision trace exposes the learned `ancient` / `structure` evidence;
 - the earlier game session replays from receipts to exactly the same public state.
 
-This is not evidence of consciousness or subjective experience. Here, **experience** means a retained causal history of observations, actions, outcomes, and measurable later behavioral effects.
-
 ## v0.2 live co-op proof
 
-Floorborn can now share one deterministic RPG world with an **external chat player** through the same `axm.player.v0.1` observation/action protocol. The chat bridge is intentionally narrow: it exposes only the current player's observation and accepts exactly one offered legal action id.
+Floorborn can share one deterministic RPG world with an **external chat player** through the same `axm.player.v0.1` observation/action protocol. The chat bridge is intentionally narrow: it exposes only the current player's observation and accepts exactly one offered legal action id.
 
 The first co-op quest is the Twinseal Gate:
 
@@ -76,19 +69,52 @@ Create a resumable live session:
 npm run live -- new ./floorborn-chat.json
 ```
 
-The bridge prints only the chat player's visible observation plus legal action ids. Choose one and commit it:
+Commit one offered legal action:
 
 ```bash
 npm run live -- act ./floorborn-chat.json move:ruins
 ```
 
-Each chat action advances the world, lets Floorborn take its next deterministic turn, persists both histories, and returns the next bounded chat observation. Resume at any time with:
+Resume at any time with:
 
 ```bash
 npm run live -- show ./floorborn-chat.json
 ```
 
-The bridge does not call a model API. The external model is the working chat itself. That keeps the experiment architecture-neutral: ChatGPT, another neural model, a human-operated shell, or another future player can occupy `chat-001` without changing the game.
+The bridge does not call a model API. The external model is the working chat itself. That keeps the experiment architecture-neutral.
+
+## v0.3 real-player expedition gate
+
+The expedition lab removes the single known quest path. Four regions contain a seed-dependent hidden arrangement of:
+
+- two required resonance seals;
+- one optional memory relic;
+- one trap.
+
+Floorborn receives only visible region tags and legal actions. Item identity and danger remain hidden until inspection. It must explore, learn outcomes, choose where to spend actions, recover two seals, and decide when the goal state justifies going to the gate.
+
+The player gate currently checks that:
+
+- Floorborn completes 16 hidden-layout seeds within a bounded turn budget;
+- different hidden layouts produce different action histories;
+- every run is receipt-backed and exactly replayable;
+- a bad prior experience can change the first route taken in a later world;
+- a second player's unexpected actions can change shared world state without breaking Floorborn into a fixed script;
+- goal relevance is represented separately from learned surface associations, preventing a bad experience with an `ancient` place from automatically blocking an `ancient` goal location;
+- recent-action pressure reduces simple loops without erasing long-term memory.
+
+Run it with:
+
+```bash
+npm test
+npm run expedition
+```
+
+## What "experience" means here
+
+This is not evidence of consciousness or subjective experience. Here, **experience** means retained causal history: observations, chosen actions, outcomes, repeated patterns, and measurable later behavioral effects.
+
+The stronger question is not whether Floorborn can imitate a human. It is whether a machine-floor architecture can become a persistent game participant with its own inspectable history and increasingly nontrivial behavior.
 
 ## Repo boundary
 
@@ -96,4 +122,4 @@ The bridge does not call a model API. The external model is the working chat its
 
 Machine-state discoveries that generalize beyond play can flow back into `axm-state-research`. The two projects should inform each other without collapsing into one repo.
 
-See [`AGENTS.md`](AGENTS.md) for lane rules and hard constraints, and [`docs/FOUNDATION.md`](docs/FOUNDATION.md) for the research foundation.
+See [`AGENTS.md`](AGENTS.md) for lane rules and hard constraints, [`docs/FOUNDATION.md`](docs/FOUNDATION.md) for the research foundation, and `evidence/` for replay-backed experiment records.
