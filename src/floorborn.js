@@ -216,9 +216,11 @@ function scoreAction(action, observation, memory) {
   if (tags.includes('cooperation') && peer?.playerId) {
     const companion = memory.companions[peer.playerId];
     if (companion) {
+      const priorObservedTurns = Math.max(0, companion.observedTurns - 1);
+      const priorSharedSessions = Math.max(0, companion.sharedSessions.length - 1);
       const familiarity = Math.min(
         1.8,
-        companion.observedTurns * 0.22 + companion.sharedSessions.length * 0.25,
+        priorObservedTurns * 0.22 + priorSharedSessions * 0.25,
       );
       if (familiarity > 0) {
         score += familiarity;
