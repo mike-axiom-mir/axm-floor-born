@@ -1,6 +1,6 @@
 import { freezeObservation } from './protocol.js';
 import { ContestedRtsSession } from './contested-rts.js';
-import { stableClone } from './stable.js';
+import { stableClone, stableStringify } from './stable.js';
 
 export class ConsequenceContestedRtsSession extends ContestedRtsSession {
   constructor(options = {}) {
@@ -58,23 +58,24 @@ export function replayConsequenceContestedRts({
 }) {
   const game = new ConsequenceContestedRtsSession({ sessionId, playerIds });
   for (const expected of receipts) {
-    const observation = game.observe(expected.playerId);
-    if (JSON.stringify(observation) === '') throw new Error('unreachable observation guard');
     const actual = game.step(expected.playerId, expected.action);
-    if (
-      actual.observationDigest !== expected.observationDigest
-      || actual.preStateDigest !== expected.preStateDigest
-      || actual.postStateDigest !== expected.postStateDigest
-      || actual.budgetBefore !== expected.budgetBefore
-      || actual.budgetAfter !== expected.budgetAfter
-      || actual.opponentBudgetBefore !== expected.opponentBudgetBefore
-      || actual.opponentBudgetAfter !== expected.opponentBudgetAfter
-      || JSON.stringify(actual.outcome) !== JSON.stringify(expected.outcome)
-    ) {
-      throw new Error(`consequence RTS replay mismatch at turn ${expected.turn}`);
-    }
+    assertReplayField('observationDigest', actual.observationDigest, expected.observationDigest, expected.turn);
+    assertReplayField('preStateDigest', actual.preStateDigest, expected.preStateDigest, expected.turn);
+    assertReplayField('postStateDigest', actual.postStateDigest, expected.postStateDigest, expected.turn);
+    assertReplayField('budgetBefore', actual.budgetBefore, expected.budgetBefore, expected.turn);
+    assertReplayField('budgetAfter', actual.budgetAfter, expected.budgetAfter, expected.turn);
+    assertReplayField('opponentBudgetBefore', actual.opponentBudgetBefore, expected.opponentBudgetBefore, expected.turn);
+    assertReplayField('opponentBudgetAfter', actual.opponentBudgetAfter, expected.opponentBudgetAfter, expected.turn);
+    assertReplayField('outcome', stableStringify(actual.outcome), stableStringify(expected.outcome), expected.turn);
   }
   return game.publicState();
+}
+
+function assertReplayField(field, actual, expected, turn) {
+  if (actual === expected) return;
+  throw new Error(
+    `consequence RTS replay ${field} mismatch at turn ${turn}: expected ${expected}, actual ${actual}`,
+  );
 }
 
 function consequenceFromAttack({
