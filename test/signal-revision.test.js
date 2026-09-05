@@ -105,6 +105,35 @@ test('specific contradicted signal evidence outranks large broad familiarity wit
   assert.equal(follow.evidence.some((line) => line.startsWith('companion-outcome:chat-001=+')), false);
 });
 
+test('recent specific contradictions can revise a still-positive lifetime aggregate, and later support can reverse it again', () => {
+  const player = new FloorbornPlayer({ playerId: 'floorborn-001' });
+  train(player, { actualSafe: true, count: 20, prefix: 'sticky-lifetime-support' });
+
+  let evidence = player.memory.companions['chat-001'].signalEvidence['route-safe'];
+  assert.deepEqual(evidence, { supported: 20, contradicted: 0 });
+  assert.equal(evaluate(player, { sessionId: 'sticky-positive-eval' }).action.id, 'signal:follow-peer');
+
+  train(player, { actualSafe: false, count: 4, prefix: 'recent-contradiction-streak' });
+  evidence = player.memory.companions['chat-001'].signalEvidence['route-safe'];
+  assert.deepEqual(evidence, { supported: 20, contradicted: 4 });
+  assert.ok(evidence.supported > evidence.contradicted, 'lifetime aggregate should still be positive');
+
+  const contradicted = evaluate(player, { sessionId: 'recent-contradiction-eval' });
+  assert.equal(contradicted.action.id, 'inspect:verify-current');
+  const contradictedFollow = contradicted.decision.proposals.find((item) => item.actionId === 'signal:follow-peer');
+  assert.ok(contradictedFollow.evidence.includes('signal-evidence-basis:chat-001:route-safe=recent-contradiction-streak'));
+  assert.ok(contradictedFollow.evidence.includes('signal-evidence:chat-001:route-safe=-2.4'));
+
+  train(player, { actualSafe: true, count: 4, prefix: 'recent-support-streak' });
+  evidence = player.memory.companions['chat-001'].signalEvidence['route-safe'];
+  assert.deepEqual(evidence, { supported: 24, contradicted: 4 });
+
+  const supportedAgain = evaluate(player, { sessionId: 'recent-support-eval' });
+  assert.equal(supportedAgain.action.id, 'signal:follow-peer');
+  const supportedFollow = supportedAgain.decision.proposals.find((item) => item.actionId === 'signal:follow-peer');
+  assert.ok(supportedFollow.evidence.includes('signal-evidence-basis:chat-001:route-safe=recent-support-streak'));
+});
+
 test('later contradictory and supporting evidence can revise the same signal memory in both directions', () => {
   const player = new FloorbornPlayer({ playerId: 'floorborn-001' });
 
