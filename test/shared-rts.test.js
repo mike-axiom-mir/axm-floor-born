@@ -158,9 +158,15 @@ test('shared RTS receipts replay the exact two-player world and per-player budge
   game.step('floorborn-001', actionById(game, 'floorborn-001', 'command:move:army-pair:center'));
   game.step('chat-001', actionById(game, 'chat-001', 'command:scout:center'));
   game.step('chat-001', actionById(game, 'chat-001', 'command:build:power-node'));
-  game.step('floorborn-001', actionById(game, 'floorborn-001', 'command:build:power-node'));
+
+  assert.equal(game.publicState().windowIndex, 1);
+  assert.equal(game.activePlayerId(), 'chat-001');
+
   game.step('chat-001', actionById(game, 'chat-001', 'wait:yield-window'));
+  game.step('floorborn-001', actionById(game, 'floorborn-001', 'command:build:power-node'));
   game.step('floorborn-001', actionById(game, 'floorborn-001', 'command:scout:center'));
+
+  assert.equal(game.isComplete(), true);
 
   const replayed = replaySharedRts({
     sessionId: 'shared-replay',
