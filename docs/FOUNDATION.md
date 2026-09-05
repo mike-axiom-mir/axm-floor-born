@@ -76,3 +76,19 @@ Human       Neural model       Floorborn       other AXM player
 ```
 
 They may cooperate rather than compete. Each keeps its own history. The game remains neutral about how each player produces a decision.
+
+## v0.2 live co-op gate
+
+The first cross-architecture proof uses two genuine player slots in one shared turn-based RPG world. `floorborn-001` is driven by deterministic Floorborn arbitration. `chat-001` is an external player slot: a working neural chat may read only its returned player observation and commit one offered legal action id.
+
+The proof quest deliberately requires shared world participation rather than parallel solo runs:
+
+- each shard exists only once globally;
+- Floorborn and the chat may split to different locations;
+- each player has an independent position and inventory;
+- both shards must be recovered;
+- both players must reunite at the same gate;
+- the gate opens only through an ordinary legal `signal` action;
+- every turn receives a deterministic action/outcome receipt and can be replayed.
+
+This is still not a claim of subjective experience. It is a stronger operational claim: two different decision architectures can occupy equal game-defined player boundaries, take independent actions, alter one shared world, and accumulate separate causal histories.
