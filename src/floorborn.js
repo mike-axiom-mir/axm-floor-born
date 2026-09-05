@@ -95,6 +95,8 @@ export class FloorbornPlayer {
     this.memory.recentActionIds.push(receipt.action.id);
     if (this.memory.recentActionIds.length > 8) this.memory.recentActionIds.shift();
 
+    updateIntentions(this.memory, receipt, decisionPeerId);
+
     if (receipt.outcome.eventId) {
       this.memory.episodes.push({
         eventId: receipt.outcome.eventId,
@@ -145,9 +147,13 @@ export class FloorbornPlayer {
     if (!this.memory.completedSessions.includes(sessionId)) this.memory.completedSessions.push(sessionId);
   }
 
+  activeIntentions() {
+    return stableClone(this.memory.intentions.filter((intention) => intention.status === 'pending'));
+  }
+
   snapshot() {
     return stableClone({
-      schema: 'axm.floorborn.memory.v0.5',
+      schema: 'axm.floorborn.memory.v0.6',
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
@@ -161,6 +167,7 @@ export class FloorbornPlayer {
       'axm.floorborn.memory.v0.3',
       'axm.floorborn.memory.v0.4',
       'axm.floorborn.memory.v0.5',
+      'axm.floorborn.memory.v0.6',
     ].includes(snapshot.schema)) {
       throw new Error('unsupported Floorborn snapshot');
     }
@@ -224,6 +231,23 @@ function scoreAction(action, observation, memory) {
     evidence.push('optional-curiosity=+0.4');
   }
 
+  for (const intention of memory.intentions) {
+    if (intention.status !== 'pending') continue;
+    if (intention.id === 'seek-relic' && tags.includes('relic')) {
+      score += 1.8;
+      evidence.push('intention:seek-relic=+1.8');
+    }
+    if (
+      intention.id === 'continue-with-peer'
+      && tags.includes('cooperation')
+      && observation.party?.peer?.playerId
+      && observation.party.peer.playerId === intention.peerId
+    ) {
+      score += 1.8;
+      evidence.push(`intention:continue-with-peer:${intention.peerId}=+1.8`);
+    }
+  }
+
   const peer = observation.party?.peer;
   if (tags.includes('cooperation') && peer?.signal) {
     score += 0.9;
@@ -271,6 +295,72 @@ function scoreAction(action, observation, memory) {
   return { action, score, evidence };
 }
 
+function updateIntentions(memory, receipt, decisionPeerId) {
+  const eventId = receipt.outcome?.eventId;
+  if (!eventId) return;
+
+  if (eventId === 'intent:seek-relic') {
+    createPendingIntention(memory, {
+      id: 'seek-relic',
+      peerId: null,
+      createdSessionId: receipt.sessionId,
+      createdTurn: receipt.turn,
+      sourceActionId: receipt.action.id,
+    });
+    return;
+  }
+
+  if (eventId === 'intent:continue-with-peer' && decisionPeerId) {
+    createPendingIntention(memory, {
+      id: 'continue-with-peer',
+      peerId: decisionPeerId,
+      createdSessionId: receipt.sessionId,
+      createdTurn: receipt.turn,
+      sourceActionId: receipt.action.id,
+    });
+    return;
+  }
+
+  if (eventId === 'gathered:memory-relic') {
+    retireLatestPending(memory, 'seek-relic', 'fulfilled', receipt);
+    return;
+  }
+
+  if (eventId === 'intent-invalidated:seek-relic') {
+    retireLatestPending(memory, 'seek-relic', 'invalidated', receipt);
+  }
+}
+
+function createPendingIntention(memory, intention) {
+  const existing = [...memory.intentions].reverse().find((candidate) => (
+    candidate.id === intention.id
+    && candidate.peerId === intention.peerId
+    && candidate.status === 'pending'
+  ));
+  if (existing) return;
+
+  memory.intentionSequence += 1;
+  memory.intentions.push({
+    sequence: memory.intentionSequence,
+    ...intention,
+    status: 'pending',
+    retiredSessionId: null,
+    retiredTurn: null,
+    retiredEventId: null,
+  });
+}
+
+function retireLatestPending(memory, intentionId, status, receipt) {
+  const intention = [...memory.intentions].reverse().find((candidate) => (
+    candidate.id === intentionId && candidate.status === 'pending'
+  ));
+  if (!intention) return;
+  intention.status = status;
+  intention.retiredSessionId = receipt.sessionId;
+  intention.retiredTurn = receipt.turn;
+  intention.retiredEventId = receipt.outcome.eventId;
+}
+
 function freshMemory() {
   return {
     completedSessions: [],
@@ -281,6 +371,8 @@ function freshMemory() {
     recentActionIds: [],
     companions: {},
     observedContextKeys: [],
+    intentionSequence: 0,
+    intentions: [],
   };
 }
 
@@ -309,6 +401,15 @@ function normalizeMemory(memory) {
   clone.recentActionIds ??= [];
   clone.companions ??= {};
   clone.observedContextKeys ??= [];
+  clone.intentionSequence ??= 0;
+  clone.intentions ??= [];
+  clone.intentions = clone.intentions.map((intention) => ({
+    peerId: null,
+    retiredSessionId: null,
+    retiredTurn: null,
+    retiredEventId: null,
+    ...intention,
+  }));
   for (const [peerId, companion] of Object.entries(clone.companions)) {
     clone.companions[peerId] = {
       ...freshCompanionMemory(),
