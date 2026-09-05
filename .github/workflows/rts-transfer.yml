@@ -34,7 +34,10 @@ jobs:
       - name: Run integrated contested adaptation proof
         run: npm run adapted-contest
       - name: Run bounded recovery lifecycle proof
-        run: npm run recovery-lifecycle | tee v14-recovery-lifecycle.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run recovery-lifecycle 2>&1 | tee v14-recovery-lifecycle.log
       - name: Upload v0.14 recovery lifecycle proof
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,7 +46,10 @@ jobs:
           path: v14-recovery-lifecycle.log
           if-no-files-found: error
       - name: Run state-grounded recovery proof
-        run: npm run state-recovery | tee v15-state-grounded-recovery.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run state-recovery 2>&1 | tee v15-state-grounded-recovery.log
       - name: Upload v0.15 state-grounded recovery proof
         if: always()
         uses: actions/upload-artifact@v4
