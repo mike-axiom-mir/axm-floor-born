@@ -4,13 +4,14 @@
 
 Floorborn is an AXM experiment in giving a deterministic machine-floor architecture a bounded player slot in a game, rather than wrapping a conventional neural game-playing agent around it.
 
-The project deliberately separates three claims:
+The project deliberately separates four claims:
 
 1. **v0.1:** Floorborn can occupy a bounded player slot and let retained experience change a later legal choice.
 2. **v0.2:** Floorborn and an external working chat can independently cooperate inside one shared replayable RPG world.
-3. **v0.3:** Floorborn can handle a broader hidden-layout expedition without a fixed action script, recover from changing world state, and carry learned preferences into later sessions.
+3. **v0.3:** Floorborn can handle a hidden-layout expedition without a fixed action script, respond to changing world state, and carry learned preferences into later sessions.
+4. **v0.4:** the same Floorborn lineage can preserve companion-specific continuity, recover from a bad hidden outcome without resetting, and let earlier optional experience change a later non-required intent.
 
-At v0.3, Floorborn meets this repo's definition of an **operational player in the bounded RPG laboratory**. That is not a claim of consciousness, personhood, human-like understanding, or general game-playing intelligence.
+At v0.4, Floorborn meets this repo's definition of a **bounded operational player with inspectable continuity inside the RPG laboratory**. That is not a claim of consciousness, personhood, human-like understanding, or general game-playing intelligence.
 
 ## Root principle
 
@@ -53,15 +54,7 @@ Expected first-proof behavior:
 
 Floorborn can share one deterministic RPG world with an **external chat player** through the same `axm.player.v0.1` observation/action protocol. The chat bridge is intentionally narrow: it exposes only the current player's observation and accepts exactly one offered legal action id.
 
-The first co-op quest is the Twinseal Gate:
-
-- Floorborn and the chat begin at the same crossroads;
-- each can independently move, inspect, gather, wait, and signal through ordinary player actions;
-- a sun shard and moon shard each exist only once in the shared world;
-- the players may split up and recover different shards;
-- both must reunite at the Twinseal Gate;
-- the gate opens only when both players and both shards are present;
-- the complete shared session is receipt-backed and exactly replayable.
+The first co-op quest is the Twinseal Gate. Floorborn and the chat can independently move, inspect, gather, wait, and signal through ordinary player actions. Each shard exists only once in the shared world, both players must reunite, and the complete session is receipt-backed and exactly replayable.
 
 ### Play the Twinseal proof from a working chat
 
@@ -73,7 +66,7 @@ npm run live -- show ./floorborn-chat.json
 
 The bridge does not call a model API. The external model is the working chat itself. That keeps the experiment architecture-neutral.
 
-## v0.3 real-player expedition gate
+## v0.3 hidden expedition player gate
 
 The expedition lab removes the single known quest path. Four regions contain a seed-dependent hidden arrangement of:
 
@@ -83,61 +76,80 @@ The expedition lab removes the single known quest path. Four regions contain a s
 
 Floorborn receives only visible region tags and legal actions. Item identity and danger remain hidden until inspection. It must explore, learn outcomes, choose where to spend actions, recover two seals, and decide when the goal state justifies going to the gate.
 
-The player gate currently checks that:
-
-- Floorborn completes 16 hidden-layout seeds within a bounded turn budget;
-- different hidden layouts produce different action histories;
-- every run is receipt-backed and exactly replayable;
-- a bad prior experience can change the first route taken in a later world;
-- a second player's unexpected actions can change shared world state without breaking Floorborn into a fixed script;
-- goal relevance is represented separately from learned surface associations, preventing a bad experience with an `ancient` place from automatically blocking an `ancient` goal location;
-- recent-action pressure reduces simple loops without erasing long-term memory.
-
-Requires Node.js 24+ and no external packages.
-
-Run the autonomous gate with:
-
-```bash
-npm test
-npm run expedition
-```
+The gate verifies that Floorborn completes 16 hidden-layout seeds within a bounded turn budget, different layouts produce different action histories, runs replay exactly, bad prior experience can change a later route, another player's actions can disturb shared state without breaking Floorborn into a fixed script, and explicit goal relevance can outrank an unrelated learned surface aversion when appropriate.
 
 ### Blind live expedition with a working chat
 
-Create a resumable expedition. If no seed is supplied, the host chooses one without printing it in the player view:
-
 ```bash
 npm run live-expedition -- new ./floorborn-expedition.json
-```
-
-The command prints only the working chat's bounded observation, legal action ids, and transcript. Commit one legal action:
-
-```bash
 npm run live-expedition -- act ./floorborn-expedition.json move:grove
-```
-
-Resume later:
-
-```bash
 npm run live-expedition -- show ./floorborn-expedition.json
-```
-
-After completion, reveal the host record or verify exact replay:
-
-```bash
-npm run live-expedition -- reveal ./floorborn-expedition.json
 npm run live-expedition -- verify ./floorborn-expedition.json
 ```
 
 The raw host snapshot contains engine state needed for resumption and replay and is therefore **not** a player input. A future process/network adapter should structurally isolate that host state from the player instead of relying on the caller not to inspect it.
 
-The first blind run is preserved at [`evidence/LIVE_EXPEDITION_SESSION_001.md`](evidence/LIVE_EXPEDITION_SESSION_001.md). In that session the working chat did not receive the seed or hidden layout during play; Floorborn independently explored, gathered a seal, signaled its discovery, moved to the goal-marked Gate, and opened it after the chat deliberately waited.
+The first blind run is preserved at [`evidence/LIVE_EXPEDITION_SESSION_001.md`](evidence/LIVE_EXPEDITION_SESSION_001.md). The v0.3 gate summary is preserved at [`evidence/V03_PLAYER_GATE.md`](evidence/V03_PLAYER_GATE.md).
 
-The v0.3 gate summary is preserved at [`evidence/V03_PLAYER_GATE.md`](evidence/V03_PLAYER_GATE.md).
+## v0.4 player continuity gate
+
+v0.4 asks a different question: once Floorborn can play, **does its own history remain meaningfully attached to the player lineage?**
+
+### Companion-specific continuity
+
+Floorborn now keeps explicit observations about named companions across sessions. This is not a hidden `trust` or reputation score. The stored evidence is concrete: observed turns, shared sessions, signals seen, place sightings, inventory sightings, and cooperative outcomes that Floorborn actually experienced while that peer was present.
+
+Relationship-specific cooperative/communication outcomes stay attached to the observed companion rather than becoming a universal claim about strangers.
+
+In the named v0.4 proof, after a real shared expedition with `chat-001`, a later neutral campfire choice produces:
+
+```text
+remembered chat-001 -> signal:continue-with-peer
+new chat-new        -> signal:finish-journey
+```
+
+The reunion decision exposes the contributing evidence instead of hiding it inside a weight:
+
+```text
+companion:chat-001=+1.8
+companion-outcome:chat-001=+0.729
+```
+
+### Optional self-selected intent
+
+The post-adventure interlude gives fresh and experienced Floorborn lineages the **same legal action menu**. A fresh lineage chooses to finish the journey. A lineage that previously discovered and legally gathered a memory relic instead chooses the optional `seek-relic` intent.
+
+```text
+fresh       -> signal:finish-journey
+relic-lived -> signal:seek-relic
+```
+
+The experienced choice is traceable to retained `relic` evidence plus optional curiosity. This is deliberately a small result. It does not prove open-ended goal invention. It proves a non-required future intent can be selected because of retained game history rather than because the current quest demands it.
+
+### Mistake and recovery
+
+On a deterministic hidden layout, Floorborn initially chooses the Glass Archive and discovers a trap. It does not reset or receive a scripted correction. The negative experience remains in memory, Floorborn returns to camp, chooses the Grove instead, and still completes the same expedition with exact replay.
+
+This matters because a player that can only succeed on clean paths is much less interesting than one that can accumulate consequences and continue.
+
+### Named v0.4 proof
+
+Requires Node.js 24+ and no external packages.
+
+```bash
+npm test
+npm run demo
+npm run expedition
+npm run continuity
+```
+
+The verified v0.4 PR head reports **33 tests passed, 0 failed**, and the named continuity harness reports PASS for companion continuity, optional intent, mistake recovery, and exact replay.
+
+The full v0.4 evidence record, including a useful failed experiment and its repaired comparison boundary, is preserved at [`evidence/V04_CONTINUITY_GATE.md`](evidence/V04_CONTINUITY_GATE.md).
 
 ## What "experience" means here
 
-This is not evidence of consciousness or subjective experience. Here, **experience** means retained causal history: observations, chosen actions, outcomes, repeated patterns, and measurable later behavioral effects.
+This is not evidence of consciousness or subjective experience. Here, **experience** means retained causal history: observations, chosen actions, outcomes, repeated patterns, companion-specific evidence, and measurable later behavioral effects.
 
 The stronger question is not whether Floorborn can imitate a human. It is whether a machine-floor architecture can become a persistent game participant with its own inspectable history and increasingly nontrivial behavior.
 
