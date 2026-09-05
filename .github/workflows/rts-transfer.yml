@@ -34,4 +34,11 @@ jobs:
       - name: Run integrated contested adaptation proof
         run: npm run adapted-contest
       - name: Run bounded recovery lifecycle proof
-        run: npm run recovery-lifecycle
+        run: npm run recovery-lifecycle | tee v14-recovery-lifecycle.log
+      - name: Upload v0.14 recovery lifecycle proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v14-recovery-lifecycle-proof
+          path: v14-recovery-lifecycle.log
+          if-no-files-found: error
