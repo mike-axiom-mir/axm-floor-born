@@ -131,6 +131,8 @@ The raw host snapshot contains engine state needed for resumption and replay and
 
 The first blind run is preserved at [`evidence/LIVE_EXPEDITION_SESSION_001.md`](evidence/LIVE_EXPEDITION_SESSION_001.md). In that session the working chat did not receive the seed or hidden layout during play; Floorborn independently explored, gathered a seal, signaled its discovery, moved to the goal-marked Gate, and opened it after the chat deliberately waited.
 
+The v0.3 gate summary is preserved at [`evidence/V03_PLAYER_GATE.md`](evidence/V03_PLAYER_GATE.md).
+
 ## What "experience" means here
 
 This is not evidence of consciousness or subjective experience. Here, **experience** means retained causal history: observations, chosen actions, outcomes, repeated patterns, and measurable later behavioral effects.
