@@ -1,6 +1,6 @@
 import { ConsequenceContestedRtsSession } from './consequence-contested-rts.js';
 import { effectiveCommandCost } from './rts-lab.js';
-import { stableClone } from './stable.js';
+import { stableClone, stableStringify } from './stable.js';
 
 const MAP_ID = 'contested-rts-basin';
 const MAX_COMBAT_INTEGRITY = 2;
@@ -62,6 +62,33 @@ export class StateRecoveryContestedRtsSession extends ConsequenceContestedRtsSes
       novelty: 0.3,
     };
   }
+}
+
+export function replayStateRecoveryContestedRts({
+  sessionId,
+  playerIds = ['floorborn-001', 'peer-001'],
+  receipts,
+}) {
+  const game = new StateRecoveryContestedRtsSession({ sessionId, playerIds });
+  for (const expected of receipts) {
+    const actual = game.step(expected.playerId, expected.action);
+    assertReplayField('observationDigest', actual.observationDigest, expected.observationDigest, expected.turn);
+    assertReplayField('preStateDigest', actual.preStateDigest, expected.preStateDigest, expected.turn);
+    assertReplayField('postStateDigest', actual.postStateDigest, expected.postStateDigest, expected.turn);
+    assertReplayField('budgetBefore', actual.budgetBefore, expected.budgetBefore, expected.turn);
+    assertReplayField('budgetAfter', actual.budgetAfter, expected.budgetAfter, expected.turn);
+    assertReplayField('opponentBudgetBefore', actual.opponentBudgetBefore, expected.opponentBudgetBefore, expected.turn);
+    assertReplayField('opponentBudgetAfter', actual.opponentBudgetAfter, expected.opponentBudgetAfter, expected.turn);
+    assertReplayField('outcome', stableStringify(actual.outcome), stableStringify(expected.outcome), expected.turn);
+  }
+  return game.publicState();
+}
+
+function assertReplayField(field, actual, expected, turn) {
+  if (actual === expected) return;
+  throw new Error(
+    `state-recovery RTS replay ${field} mismatch at turn ${turn}: expected ${expected}, actual ${actual}`,
+  );
 }
 
 function command(id, target, affectedGroups, affordanceTags) {
