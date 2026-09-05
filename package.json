@@ -1,13 +1,14 @@
 {
   "name": "axm-floor-born",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Deterministic machine-floor-as-player research lab.",
   "scripts": {
     "test": "node --test",
     "demo": "node experiments/first-proof.js",
-    "live": "node experiments/live-chat-coop.js"
+    "live": "node experiments/live-chat-coop.js",
+    "expedition": "node experiments/expedition-proof.js"
   },
   "engines": {
     "node": ">=20"
