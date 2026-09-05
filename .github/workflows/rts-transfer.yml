@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 24
       - name: Run RTS transfer tests
-        run: node --test test/rts.test.js test/shared-rts.test.js test/live-shared-rts.test.js test/contested-rts.test.js
+        run: node --test test/rts.test.js test/shared-rts.test.js test/live-shared-rts.test.js test/contested-rts.test.js test/consequence-intake.test.js
       - name: Run named RTS action-budget proof
         run: npm run rts
       - name: Run named shared RTS player-slots proof
@@ -27,3 +27,5 @@ jobs:
         run: node experiments/live-shared-rts-session-001.js
       - name: Run contested RTS behavior proof
         run: npm run contested-rts
+      - name: Run visible consequence intake proof
+        run: npm run consequence
