@@ -92,6 +92,11 @@ test('enemy center position stays hidden until legal line-of-sight exists', () =
   assert.deepEqual(peerView.rts.visibleEnemyContacts, []);
 
   game.step('peer-001', actionById(game, 'peer-001', 'command:scout:center'));
+
+  // Floorborn still owns one effective action in this window. Yield it before
+  // reading the peer's next bounded observation instead of assuming strict alternation.
+  game.step('floorborn-001', actionById(game, 'floorborn-001', 'wait:yield-window'));
+
   peerView = game.observe('peer-001');
   assert.deepEqual(peerView.rts.visibleEnemyContacts.map((contact) => contact.groupId), ['army-alpha']);
 });
