@@ -21,3 +21,5 @@ jobs:
         run: npm test
       - name: Run first proof demo
         run: npm run demo
+      - name: Run expedition player gate
+        run: npm run expedition
