@@ -8,6 +8,7 @@ const BASE_KIND_SCORE = Object.freeze({
   signal: 0.5,
   wait: 0.0,
 });
+const PEER_SPECIFIC_TAGS = new Set(['cooperation', 'communication']);
 
 export class FloorbornPlayer {
   constructor({
@@ -36,6 +37,7 @@ export class FloorbornPlayer {
 
     this.lastDecision = {
       turn: observation.turn,
+      peerId: observation.party?.peer?.playerId ?? null,
       selectedActionId: selected.id,
       proposals: proposals.map((proposal) => ({
         actionId: proposal.action.id,
@@ -84,6 +86,7 @@ export class FloorbornPlayer {
     const utility = Number(receipt.outcome.utility ?? 0);
     const novelty = Number(receipt.outcome.novelty ?? 0);
     const combinedSignal = utility + novelty * 0.25;
+    const decisionPeerId = this.lastDecision?.turn === receipt.turn ? this.lastDecision.peerId : null;
 
     this.memory.actionsObserved += 1;
     this.memory.recentActionIds.push(receipt.action.id);
@@ -96,10 +99,21 @@ export class FloorbornPlayer {
         utility: round(utility),
         novelty: round(novelty),
         tags: [...tags].sort(),
+        peerId: decisionPeerId,
       });
     }
 
     for (const tag of tags) {
+      if (decisionPeerId && PEER_SPECIFIC_TAGS.has(tag)) {
+        const companion = this.memory.companions[decisionPeerId] ?? freshCompanionMemory();
+        companion.cooperationOutcomes.count += 1;
+        companion.cooperationOutcomes.totalSignal = round(
+          companion.cooperationOutcomes.totalSignal + combinedSignal,
+        );
+        this.memory.companions[decisionPeerId] = companion;
+        continue;
+      }
+
       const current = this.memory.tagPatterns[tag] ?? { count: 0, totalSignal: 0 };
       current.count += 1;
       current.totalSignal = round(current.totalSignal + combinedSignal);
@@ -117,7 +131,7 @@ export class FloorbornPlayer {
 
   snapshot() {
     return stableClone({
-      schema: 'axm.floorborn.memory.v0.3',
+      schema: 'axm.floorborn.memory.v0.4',
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
@@ -129,6 +143,7 @@ export class FloorbornPlayer {
       'axm.floorborn.memory.v0.1',
       'axm.floorborn.memory.v0.2',
       'axm.floorborn.memory.v0.3',
+      'axm.floorborn.memory.v0.4',
     ].includes(snapshot.schema)) {
       throw new Error('unsupported Floorborn snapshot');
     }
@@ -209,6 +224,15 @@ function scoreAction(action, observation, memory) {
         score += familiarity;
         evidence.push(`companion:${peer.playerId}=+${round(familiarity)}`);
       }
+
+      if (companion.cooperationOutcomes.count > 0) {
+        const learnedCooperation = Math.min(
+          1.5,
+          companion.cooperationOutcomes.totalSignal / companion.cooperationOutcomes.count,
+        );
+        score += learnedCooperation;
+        evidence.push(`companion-outcome:${peer.playerId}=+${round(learnedCooperation)}`);
+      }
     }
   }
 
@@ -235,6 +259,10 @@ function freshCompanionMemory() {
     signalsSeen: {},
     placeSightings: {},
     inventorySightings: 0,
+    cooperationOutcomes: {
+      count: 0,
+      totalSignal: 0,
+    },
   };
 }
 
@@ -255,6 +283,10 @@ function normalizeMemory(memory) {
       sharedSessions: [...(companion.sharedSessions ?? [])],
       signalsSeen: { ...(companion.signalsSeen ?? {}) },
       placeSightings: { ...(companion.placeSightings ?? {}) },
+      cooperationOutcomes: {
+        count: companion.cooperationOutcomes?.count ?? 0,
+        totalSignal: companion.cooperationOutcomes?.totalSignal ?? 0,
+      },
     };
   }
   return clone;
