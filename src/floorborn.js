@@ -49,6 +49,25 @@ export class FloorbornPlayer {
       })),
     };
 
+    if (observation.sessionId.endsWith('-verify-eval')) {
+      const peerId = observation.party?.peer?.playerId;
+      const peerSignal = observation.party?.peer?.signal;
+      const companion = peerId ? this.memory.companions[peerId] : null;
+      console.error('FLOORBORN_CAMPAIGN_VERIFY_TRACE', JSON.stringify({
+        sessionId: observation.sessionId,
+        peerId,
+        peerSignal,
+        signalEvidence: companion?.signalEvidence?.[peerSignal] ?? null,
+        recentSignalVerdicts: companion?.recentSignalVerdicts?.[peerSignal] ?? null,
+        observedTurns: companion?.observedTurns ?? null,
+        sharedSessions: companion?.sharedSessions?.length ?? null,
+        cooperationOutcomes: companion?.cooperationOutcomes ?? null,
+        activeIntentions: this.activeIntentions(),
+        selectedActionId: selected.id,
+        proposals: this.lastDecision.proposals,
+      }, null, 2));
+    }
+
     return selected;
   }
 
