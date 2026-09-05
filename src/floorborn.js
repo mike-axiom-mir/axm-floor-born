@@ -248,6 +248,12 @@ function scoreAction(action, observation, memory) {
     evidence.push('goal-relevance=+3');
   }
 
+  const criticalGroups = criticalRecoveryGroups(action, observation);
+  if (tags.includes('recovery') && criticalGroups.length > 0) {
+    score += 3.0;
+    evidence.push(`critical-state-recovery:${criticalGroups.join(',')}=+3`);
+  }
+
   if (tags.includes('completion')) {
     score += 0.8;
     evidence.push('completion-bias=+0.8');
@@ -319,6 +325,20 @@ function scoreAction(action, observation, memory) {
   }
 
   return { action, score, evidence };
+}
+
+function criticalRecoveryGroups(action, observation) {
+  if (!Array.isArray(action.affectedGroups) || !Array.isArray(observation.rts?.ownGroups)) return [];
+  const affected = new Set(action.affectedGroups);
+  return observation.rts.ownGroups
+    .filter((group) => (
+      affected.has(group.id)
+      && group.role === 'combat'
+      && group.position === 'center'
+      && Number(group.integrity) === 1
+    ))
+    .map((group) => group.id)
+    .sort();
 }
 
 function assessSpecificSignal(companion, signal) {
@@ -433,6 +453,8 @@ function freshMemory() {
     observedContextKeys: [],
     intentionSequence: 0,
     intentions: [],
+    visibleConsequenceKeys: [],
+    observedConsequences: [],
   };
 }
 
@@ -464,6 +486,8 @@ function normalizeMemory(memory) {
   clone.observedContextKeys ??= [];
   clone.intentionSequence ??= 0;
   clone.intentions ??= [];
+  clone.visibleConsequenceKeys ??= [];
+  clone.observedConsequences ??= [];
   clone.intentions = clone.intentions.map((intention) => ({
     peerId: null,
     retiredSessionId: null,
