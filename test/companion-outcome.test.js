@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { FloorbornPlayer } from '../src/floorborn.js';
 import { ExpeditionSession } from '../src/expedition-rpg.js';
+import { InterludeSession } from '../src/interlude.js';
 
 function choosePeerAction(observation, visited) {
   const legal = observation.legalActions;
@@ -83,27 +84,32 @@ test('successful cooperation is retained on the observed companion rather than g
   const samePeer = FloorbornPlayer.restore(veteran.snapshot());
   const stranger = FloorbornPlayer.restore(veteran.snapshot());
 
-  const sameGame = new ExpeditionSession({
+  const reunion = new InterludeSession({
     sessionId: 'reunion',
-    seed: 13,
-    playerIds: ['floorborn-001', 'chat-001'],
+    playerId: 'floorborn-001',
+    peerId: 'chat-001',
   });
-  const strangerGame = new ExpeditionSession({
+  const newPerson = new InterludeSession({
     sessionId: 'new-person',
-    seed: 13,
-    playerIds: ['floorborn-001', 'chat-new'],
+    playerId: 'floorborn-001',
+    peerId: 'chat-new',
   });
 
-  const sameAction = samePeer.decide(sameGame.observe('floorborn-001'));
-  const strangerAction = stranger.decide(strangerGame.observe('floorborn-001'));
+  const sameAction = samePeer.decide(reunion.observe());
+  const strangerAction = stranger.decide(newPerson.observe());
 
-  assert.equal(sameAction.id, 'signal:explore');
-  assert.notEqual(strangerAction.id, 'signal:explore');
+  assert.equal(sameAction.id, 'signal:continue-with-peer');
+  assert.notEqual(strangerAction.id, 'signal:continue-with-peer');
 
-  const familiarProposal = samePeer.lastDecision.proposals.find((proposal) => proposal.actionId === 'signal:explore');
+  const familiarProposal = samePeer.lastDecision.proposals.find(
+    (proposal) => proposal.actionId === 'signal:continue-with-peer',
+  );
   assert.ok(familiarProposal.evidence.some((line) => line.startsWith('companion:chat-001=+')));
   assert.ok(familiarProposal.evidence.some((line) => line.startsWith('companion-outcome:chat-001=+')));
 
-  const strangerProposal = stranger.lastDecision.proposals.find((proposal) => proposal.actionId === 'signal:explore');
-  assert.equal(strangerProposal.evidence.some((line) => line.startsWith('companion-outcome:chat-001=')), false);
+  const strangerProposal = stranger.lastDecision.proposals.find(
+    (proposal) => proposal.actionId === 'signal:continue-with-peer',
+  );
+  assert.equal(strangerProposal.evidence.some((line) => line.startsWith('companion:chat-new=+')), false);
+  assert.equal(strangerProposal.evidence.some((line) => line.startsWith('companion-outcome:chat-new=+')), false);
 });
