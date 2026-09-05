@@ -29,6 +29,9 @@ export class FloorbornPlayer {
   decide(observation) {
     validateObservation(observation);
     this.observeContext(observation);
+    if (this.perspectives.recoveryLifecycle) {
+      refreshRecoveryLifecycles(this.memory, observation);
+    }
 
     const proposals = observation.legalActions.map((action) => (
       scoreAction(action, observation, this.memory, this.perspectives)
@@ -102,6 +105,9 @@ export class FloorbornPlayer {
     if (this.memory.recentActionIds.length > 8) this.memory.recentActionIds.shift();
 
     updateIntentions(this.memory, receipt, decisionPeerId);
+    if (this.perspectives.recoveryLifecycle) {
+      updateRecoveryLifecycles(this.memory, receipt);
+    }
 
     if (receipt.outcome.eventId) {
       this.memory.episodes.push({
@@ -162,6 +168,10 @@ export class FloorbornPlayer {
 
   activeIntentions() {
     return stableClone(this.memory.intentions.filter((intention) => intention.status === 'pending'));
+  }
+
+  activeRecoveries() {
+    return stableClone(this.memory.recoveries.filter((recovery) => recovery.status === 'pending'));
   }
 
   snapshot() {
@@ -262,6 +272,14 @@ function scoreAction(action, observation, memory, perspectives) {
     evidence.push(`critical-state-recovery:${criticalGroups.join(',')}=+3`);
   }
 
+  if (perspectives.recoveryLifecycle) {
+    const heldGroups = recoveryHeldGroups(action, observation, memory);
+    if (heldGroups.length > 0) {
+      score -= 3.0;
+      evidence.push(`recovery-lifecycle-hold:${heldGroups.join(',')}=-3`);
+    }
+  }
+
   if (tags.includes('completion')) {
     score += 0.8;
     evidence.push('completion-bias=+0.8');
@@ -347,6 +365,120 @@ function criticalRecoveryGroups(action, observation) {
     ))
     .map((group) => group.id)
     .sort();
+}
+
+function recoveryHeldGroups(action, observation, memory) {
+  if (action.target !== 'center' || !Array.isArray(action.affectedGroups)) return [];
+  if (!Array.isArray(observation.rts?.ownGroups)) return [];
+
+  const pending = new Set(
+    memory.recoveries
+      .filter((recovery) => recovery.status === 'pending')
+      .map((recovery) => recovery.groupId),
+  );
+  if (pending.size === 0) return [];
+
+  const ownGroups = new Map(observation.rts.ownGroups.map((group) => [group.id, group]));
+  return action.affectedGroups
+    .filter((groupId) => (
+      pending.has(groupId)
+      && ownGroups.get(groupId)?.position === 'base'
+      && Number(ownGroups.get(groupId)?.integrity) > 0
+    ))
+    .sort();
+}
+
+function refreshRecoveryLifecycles(memory, observation) {
+  for (const recovery of memory.recoveries) {
+    if (recovery.status !== 'pending') continue;
+
+    if (recovery.createdSessionId !== observation.sessionId) {
+      retireRecovery(recovery, 'invalidated', {
+        sessionId: observation.sessionId,
+        turn: observation.turn,
+        windowIndex: observation.rts?.windowIndex ?? null,
+        eventId: 'recovery-invalidated:session-changed',
+      });
+      continue;
+    }
+
+    const group = observation.rts?.ownGroups?.find((candidate) => candidate.id === recovery.groupId);
+    if (!group || Number(group.integrity) <= 0 || group.position === 'destroyed') {
+      retireRecovery(recovery, 'invalidated', {
+        sessionId: observation.sessionId,
+        turn: observation.turn,
+        windowIndex: observation.rts?.windowIndex ?? null,
+        eventId: 'recovery-invalidated:group-unavailable',
+      });
+      continue;
+    }
+
+    if (
+      Number.isInteger(recovery.createdWindowIndex)
+      && Number.isInteger(observation.rts?.windowIndex)
+      && observation.rts.windowIndex > recovery.createdWindowIndex
+    ) {
+      retireRecovery(recovery, 'completed', {
+        sessionId: observation.sessionId,
+        turn: observation.turn,
+        windowIndex: observation.rts.windowIndex,
+        eventId: 'recovery-completed:window-advanced',
+      });
+    }
+  }
+}
+
+function updateRecoveryLifecycles(memory, receipt) {
+  const eventId = receipt.outcome?.eventId ?? '';
+  if (eventId.startsWith('retreated:')) {
+    const groupId = receipt.action?.affectedGroups?.[0];
+    if (!groupId) return;
+
+    const existing = [...memory.recoveries].reverse().find((recovery) => (
+      recovery.groupId === groupId && recovery.status === 'pending'
+    ));
+    if (existing) return;
+
+    memory.recoverySequence += 1;
+    memory.recoveries.push({
+      sequence: memory.recoverySequence,
+      groupId,
+      status: 'pending',
+      createdSessionId: receipt.sessionId,
+      createdTurn: receipt.turn,
+      createdWindowIndex: Number.isInteger(receipt.windowIndex) ? receipt.windowIndex : null,
+      sourceActionId: receipt.action.id,
+      sourceEventId: eventId,
+      retiredSessionId: null,
+      retiredTurn: null,
+      retiredWindowIndex: null,
+      retiredEventId: null,
+    });
+    return;
+  }
+
+  if (receipt.action?.target === 'center' && Array.isArray(receipt.action.affectedGroups)) {
+    for (const groupId of receipt.action.affectedGroups) {
+      const pending = [...memory.recoveries].reverse().find((recovery) => (
+        recovery.groupId === groupId && recovery.status === 'pending'
+      ));
+      if (!pending) continue;
+      retireRecovery(pending, 'overridden', {
+        sessionId: receipt.sessionId,
+        turn: receipt.turn,
+        windowIndex: Number.isInteger(receipt.windowIndex) ? receipt.windowIndex : null,
+        eventId: `recovery-overridden:${receipt.action.id}`,
+      });
+    }
+  }
+}
+
+function retireRecovery(recovery, status, { sessionId, turn, windowIndex, eventId }) {
+  recovery.status = status;
+  recovery.retiredSessionId = sessionId;
+  recovery.retiredTurn = turn;
+  recovery.retiredWindowIndex = windowIndex;
+  recovery.retiredEventId = eventId;
 }
 
 function assessSpecificSignal(companion, signal) {
@@ -461,6 +593,8 @@ function freshMemory() {
     observedContextKeys: [],
     intentionSequence: 0,
     intentions: [],
+    recoverySequence: 0,
+    recoveries: [],
     visibleConsequenceKeys: [],
     observedConsequences: [],
   };
@@ -494,6 +628,8 @@ function normalizeMemory(memory) {
   clone.observedContextKeys ??= [];
   clone.intentionSequence ??= 0;
   clone.intentions ??= [];
+  clone.recoverySequence ??= 0;
+  clone.recoveries ??= [];
   clone.visibleConsequenceKeys ??= [];
   clone.observedConsequences ??= [];
   clone.intentions = clone.intentions.map((intention) => ({
@@ -502,6 +638,14 @@ function normalizeMemory(memory) {
     retiredTurn: null,
     retiredEventId: null,
     ...intention,
+  }));
+  clone.recoveries = clone.recoveries.map((recovery) => ({
+    createdWindowIndex: null,
+    retiredSessionId: null,
+    retiredTurn: null,
+    retiredWindowIndex: null,
+    retiredEventId: null,
+    ...recovery,
   }));
   for (const [peerId, companion] of Object.entries(clone.companions)) {
     clone.companions[peerId] = {
@@ -531,6 +675,7 @@ function normalizeMemory(memory) {
 function normalizePerspectives(perspectives) {
   return {
     criticalRecovery: Boolean(perspectives?.criticalRecovery),
+    recoveryLifecycle: Boolean(perspectives?.recoveryLifecycle),
   };
 }
 
