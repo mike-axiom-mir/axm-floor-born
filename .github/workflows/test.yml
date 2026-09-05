@@ -23,3 +23,5 @@ jobs:
         run: npm run demo
       - name: Run expedition player gate
         run: npm run expedition
+      - name: Run continuity player gate
+        run: npm run continuity
