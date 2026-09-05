@@ -10,6 +10,8 @@ The project deliberately separates three claims:
 2. **v0.2:** Floorborn and an external working chat can independently cooperate inside one shared replayable RPG world.
 3. **v0.3:** Floorborn can handle a broader hidden-layout expedition without a fixed action script, recover from changing world state, and carry learned preferences into later sessions.
 
+At v0.3, Floorborn meets this repo's definition of an **operational player in the bounded RPG laboratory**. That is not a claim of consciousness, personhood, human-like understanding, or general game-playing intelligence.
+
 ## Root principle
 
 > **Different outside. Equal inside. Choice and action define the player.**
