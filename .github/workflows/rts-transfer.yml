@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 24
       - name: Run RTS transfer tests
-        run: node --test test/rts.test.js test/shared-rts.test.js test/live-shared-rts.test.js test/contested-rts.test.js test/consequence-intake.test.js test/recovery-perspective.test.js test/integrated-contested-adaptation.test.js test/recovery-lifecycle.test.js
+        run: node --test test/rts.test.js test/shared-rts.test.js test/live-shared-rts.test.js test/contested-rts.test.js test/consequence-intake.test.js test/recovery-perspective.test.js test/integrated-contested-adaptation.test.js test/recovery-lifecycle.test.js test/state-grounded-recovery.test.js
       - name: Run named RTS action-budget proof
         run: npm run rts
       - name: Run named shared RTS player-slots proof
@@ -41,4 +41,13 @@ jobs:
         with:
           name: v14-recovery-lifecycle-proof
           path: v14-recovery-lifecycle.log
+          if-no-files-found: error
+      - name: Run state-grounded recovery proof
+        run: npm run state-recovery | tee v15-state-grounded-recovery.log
+      - name: Upload v0.15 state-grounded recovery proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v15-state-grounded-recovery-proof
+          path: v15-state-grounded-recovery.log
           if-no-files-found: error
