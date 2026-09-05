@@ -29,3 +29,5 @@ jobs:
         run: npm run revision
       - name: Run intention lifecycle gate
         run: npm run intention
+      - name: Run multi-session campaign gate
+        run: npm run campaign
