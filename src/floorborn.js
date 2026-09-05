@@ -17,10 +17,12 @@ export class FloorbornPlayer {
     playerId = 'floorborn-001',
     lineageId = 'floorborn-root',
     memory = null,
+    perspectives = null,
   } = {}) {
     this.playerId = playerId;
     this.lineageId = lineageId;
     this.memory = memory ? normalizeMemory(memory) : freshMemory();
+    this.perspectives = normalizePerspectives(perspectives);
     this.lastDecision = null;
   }
 
@@ -28,7 +30,9 @@ export class FloorbornPlayer {
     validateObservation(observation);
     this.observeContext(observation);
 
-    const proposals = observation.legalActions.map((action) => scoreAction(action, observation, this.memory));
+    const proposals = observation.legalActions.map((action) => (
+      scoreAction(action, observation, this.memory, this.perspectives)
+    ));
     proposals.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return a.action.id.localeCompare(b.action.id);
@@ -166,6 +170,7 @@ export class FloorbornPlayer {
       playerId: this.playerId,
       lineageId: this.lineageId,
       memory: this.memory,
+      perspectives: this.perspectives,
     });
   }
 
@@ -185,11 +190,12 @@ export class FloorbornPlayer {
       playerId: snapshot.playerId,
       lineageId: snapshot.lineageId,
       memory: snapshot.memory,
+      perspectives: snapshot.perspectives ?? null,
     });
   }
 }
 
-function scoreAction(action, observation, memory) {
+function scoreAction(action, observation, memory, perspectives) {
   let score = BASE_KIND_SCORE[action.kind] ?? 0;
   const evidence = [`base:${action.kind}=${round(score)}`];
   const tags = action.affordanceTags ?? [];
@@ -248,7 +254,9 @@ function scoreAction(action, observation, memory) {
     evidence.push('goal-relevance=+3');
   }
 
-  const criticalGroups = criticalRecoveryGroups(action, observation);
+  const criticalGroups = perspectives.criticalRecovery
+    ? criticalRecoveryGroups(action, observation)
+    : [];
   if (tags.includes('recovery') && criticalGroups.length > 0) {
     score += 3.0;
     evidence.push(`critical-state-recovery:${criticalGroups.join(',')}=+3`);
@@ -518,6 +526,12 @@ function normalizeMemory(memory) {
     };
   }
   return clone;
+}
+
+function normalizePerspectives(perspectives) {
+  return {
+    criticalRecovery: Boolean(perspectives?.criticalRecovery),
+  };
 }
 
 function round(value) {
