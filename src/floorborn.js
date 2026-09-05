@@ -249,44 +249,51 @@ function scoreAction(action, observation, memory) {
   }
 
   const peer = observation.party?.peer;
-  if (tags.includes('cooperation') && peer?.signal) {
-    score += 0.9;
-    evidence.push('peer-signal=+0.9');
-  }
-
   if (tags.includes('cooperation') && peer?.playerId) {
     const companion = memory.companions[peer.playerId];
-    if (companion) {
-      const priorObservedTurns = Math.max(0, companion.observedTurns - 1);
-      const priorSharedSessions = Math.max(0, companion.sharedSessions.length - 1);
-      const familiarity = Math.min(
-        1.8,
-        priorObservedTurns * 0.22 + priorSharedSessions * 0.25,
-      );
-      if (familiarity > 0) {
-        score += familiarity;
-        evidence.push(`companion:${peer.playerId}=+${round(familiarity)}`);
-      }
+    let specificSignalContradicted = false;
 
-      if (companion.cooperationOutcomes.count > 0) {
-        const learnedCooperation = Math.min(
-          1.5,
-          companion.cooperationOutcomes.totalSignal / companion.cooperationOutcomes.count,
-        );
-        score += learnedCooperation;
-        evidence.push(`companion-outcome:${peer.playerId}=+${round(learnedCooperation)}`);
+    if (companion && peer.signal) {
+      const signalEvidence = companion.signalEvidence[peer.signal];
+      if (signalEvidence) {
+        const total = signalEvidence.supported + signalEvidence.contradicted;
+        if (total > 0) {
+          const balance = (signalEvidence.supported - signalEvidence.contradicted) / total;
+          const signalWeight = round(balance * 2.4);
+          score += signalWeight;
+          evidence.push(`signal-evidence:${peer.playerId}:${peer.signal}=${signed(signalWeight)}`);
+          specificSignalContradicted = balance < 0;
+        }
       }
+    }
 
+    if (specificSignalContradicted) {
+      evidence.push('specific-signal-contradiction=blocks-general-companion-bonus');
+    } else {
       if (peer.signal) {
-        const signalEvidence = companion.signalEvidence[peer.signal];
-        if (signalEvidence) {
-          const total = signalEvidence.supported + signalEvidence.contradicted;
-          if (total > 0) {
-            const balance = (signalEvidence.supported - signalEvidence.contradicted) / total;
-            const signalWeight = round(balance * 2.4);
-            score += signalWeight;
-            evidence.push(`signal-evidence:${peer.playerId}:${peer.signal}=${signed(signalWeight)}`);
-          }
+        score += 0.9;
+        evidence.push('peer-signal=+0.9');
+      }
+
+      if (companion) {
+        const priorObservedTurns = Math.max(0, companion.observedTurns - 1);
+        const priorSharedSessions = Math.max(0, companion.sharedSessions.length - 1);
+        const familiarity = Math.min(
+          1.8,
+          priorObservedTurns * 0.22 + priorSharedSessions * 0.25,
+        );
+        if (familiarity > 0) {
+          score += familiarity;
+          evidence.push(`companion:${peer.playerId}=+${round(familiarity)}`);
+        }
+
+        if (companion.cooperationOutcomes.count > 0) {
+          const learnedCooperation = Math.min(
+            1.5,
+            companion.cooperationOutcomes.totalSignal / companion.cooperationOutcomes.count,
+          );
+          score += learnedCooperation;
+          evidence.push(`companion-outcome:${peer.playerId}=+${round(learnedCooperation)}`);
         }
       }
     }
