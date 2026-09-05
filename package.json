@@ -1,0 +1,30 @@
+{
+  "name": "axm-floor-born",
+  "version": "0.15.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic machine-floor operational-player research lab.",
+  "scripts": {
+    "test": "node --test",
+    "demo": "node experiments/first-proof.js",
+    "live": "node experiments/live-chat-coop.js",
+    "expedition": "node experiments/expedition-proof.js",
+    "live-expedition": "node experiments/live-expedition.js",
+    "continuity": "node experiments/continuity-proof.js",
+    "revision": "node experiments/revision-proof.js",
+    "intention": "node experiments/intention-proof.js",
+    "campaign": "node experiments/campaign-proof.js",
+    "rts": "node experiments/rts-proof.js",
+    "shared-rts": "node experiments/shared-rts-proof.js",
+    "live-shared-rts": "node experiments/live-shared-rts.js",
+    "contested-rts": "node experiments/contested-rts-proof.js",
+    "consequence": "node experiments/consequence-proof.js",
+    "recovery": "node experiments/recovery-proof.js",
+    "adapted-contest": "node experiments/adapted-contest-proof.js",
+    "recovery-lifecycle": "node experiments/recovery-lifecycle-proof.js",
+    "state-recovery": "node experiments/state-grounded-recovery-proof.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,0 +1,59 @@
+name: floorborn-rts-transfer
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rts-transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run RTS transfer tests
+        run: node --test test/rts.test.js test/shared-rts.test.js test/live-shared-rts.test.js test/contested-rts.test.js test/consequence-intake.test.js test/recovery-perspective.test.js test/integrated-contested-adaptation.test.js test/recovery-lifecycle.test.js test/state-grounded-recovery.test.js
+      - name: Run named RTS action-budget proof
+        run: npm run rts
+      - name: Run named shared RTS player-slots proof
+        run: npm run shared-rts
+      - name: Run first live working-chat shared RTS session
+        run: node experiments/live-shared-rts-session-001.js
+      - name: Run contested RTS behavior proof
+        run: npm run contested-rts
+      - name: Run visible consequence intake proof
+        run: npm run consequence
+      - name: Run critical recovery perspective proof
+        run: npm run recovery
+      - name: Run integrated contested adaptation proof
+        run: npm run adapted-contest
+      - name: Run bounded recovery lifecycle proof
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run recovery-lifecycle 2>&1 | tee v14-recovery-lifecycle.log
+      - name: Upload v0.14 recovery lifecycle proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v14-recovery-lifecycle-proof
+          path: v14-recovery-lifecycle.log
+          if-no-files-found: error
+      - name: Run state-grounded recovery proof
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run state-recovery 2>&1 | tee v15-state-grounded-recovery.log
+      - name: Upload v0.15 state-grounded recovery proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v15-state-grounded-recovery-proof
+          path: v15-state-grounded-recovery.log
+          if-no-files-found: error

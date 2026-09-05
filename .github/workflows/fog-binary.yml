@@ -1,0 +1,31 @@
+name: floorborn-fog-binary
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  fog-binary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Assert direct fog
+        id: direct
+        continue-on-error: true
+        run: node experiments/fog-resume-assert.js direct
+      - name: Assert resumed fog
+        id: resumed
+        continue-on-error: true
+        run: node experiments/fog-resume-assert.js resumed
+      - name: Fail if either boundary leaked
+        run: |
+          test "${{ steps.direct.outcome }}" = "success"
+          test "${{ steps.resumed.outcome }}" = "success"
