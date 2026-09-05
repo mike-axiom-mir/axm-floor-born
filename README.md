@@ -54,6 +54,42 @@ Expected first-proof behavior:
 
 This is not evidence of consciousness or subjective experience. Here, **experience** means a retained causal history of observations, actions, outcomes, and measurable later behavioral effects.
 
+## v0.2 live co-op proof
+
+Floorborn can now share one deterministic RPG world with an **external chat player** through the same `axm.player.v0.1` observation/action protocol. The chat bridge is intentionally narrow: it exposes only the current player's observation and accepts exactly one offered legal action id.
+
+The first co-op quest is the Twinseal Gate:
+
+- Floorborn and the chat begin at the same crossroads;
+- each can independently move, inspect, gather, wait, and signal through ordinary player actions;
+- a sun shard and moon shard each exist only once in the shared world;
+- the players may split up and recover different shards;
+- both must reunite at the Twinseal Gate;
+- the gate opens only when both players and both shards are present;
+- the complete shared session is receipt-backed and exactly replayable.
+
+### Play from a working chat
+
+Create a resumable live session:
+
+```bash
+npm run live -- new ./floorborn-chat.json
+```
+
+The bridge prints only the chat player's visible observation plus legal action ids. Choose one and commit it:
+
+```bash
+npm run live -- act ./floorborn-chat.json move:ruins
+```
+
+Each chat action advances the world, lets Floorborn take its next deterministic turn, persists both histories, and returns the next bounded chat observation. Resume at any time with:
+
+```bash
+npm run live -- show ./floorborn-chat.json
+```
+
+The bridge does not call a model API. The external model is the working chat itself. That keeps the experiment architecture-neutral: ChatGPT, another neural model, a human-operated shell, or another future player can occupy `chat-001` without changing the game.
+
 ## Repo boundary
 
 `axm-floor-born` owns the machine-as-player experiment: player protocol, Floorborn identity/memory, game adapters, experiments, and evidence.
