@@ -61,23 +61,11 @@ The first co-op quest is the Twinseal Gate:
 - the gate opens only when both players and both shards are present;
 - the complete shared session is receipt-backed and exactly replayable.
 
-### Play from a working chat
-
-Create a resumable live session:
+### Play the Twinseal proof from a working chat
 
 ```bash
 npm run live -- new ./floorborn-chat.json
-```
-
-Commit one offered legal action:
-
-```bash
 npm run live -- act ./floorborn-chat.json move:ruins
-```
-
-Resume at any time with:
-
-```bash
 npm run live -- show ./floorborn-chat.json
 ```
 
@@ -103,12 +91,43 @@ The player gate currently checks that:
 - goal relevance is represented separately from learned surface associations, preventing a bad experience with an `ancient` place from automatically blocking an `ancient` goal location;
 - recent-action pressure reduces simple loops without erasing long-term memory.
 
-Run it with:
+Run the autonomous gate with:
 
 ```bash
 npm test
 npm run expedition
 ```
+
+### Blind live expedition with a working chat
+
+Create a resumable expedition. If no seed is supplied, the host chooses one without printing it in the player view:
+
+```bash
+npm run live-expedition -- new ./floorborn-expedition.json
+```
+
+The command prints only the working chat's bounded observation, legal action ids, and transcript. Commit one legal action:
+
+```bash
+npm run live-expedition -- act ./floorborn-expedition.json move:grove
+```
+
+Resume later:
+
+```bash
+npm run live-expedition -- show ./floorborn-expedition.json
+```
+
+After completion, reveal the host record or verify exact replay:
+
+```bash
+npm run live-expedition -- reveal ./floorborn-expedition.json
+npm run live-expedition -- verify ./floorborn-expedition.json
+```
+
+The raw host snapshot contains engine state needed for resumption and replay and is therefore **not** a player input. A future process/network adapter should structurally isolate that host state from the player instead of relying on the caller not to inspect it.
+
+The first blind run is preserved at [`evidence/LIVE_EXPEDITION_SESSION_001.md`](evidence/LIVE_EXPEDITION_SESSION_001.md). In that session the working chat did not receive the seed or hidden layout during play; Floorborn independently explored, gathered a seal, signaled its discovery, moved to the goal-marked Gate, and opened it after the chat deliberately waited.
 
 ## What "experience" means here
 
