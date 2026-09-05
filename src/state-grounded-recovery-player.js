@@ -124,7 +124,18 @@ export class StateGroundedRecoveryPlayer {
     }
   }
 
-  markSessionComplete(sessionId) {
+  markSessionComplete(sessionId, { turn = null, windowIndex = null } = {}) {
+    this.ensureMemory();
+    for (const recovery of this.memory.stateGroundedRecoveries) {
+      if (recovery.status !== 'pending') continue;
+      if (recovery.createdSessionId !== sessionId) continue;
+      retire(recovery, 'invalidated', {
+        sessionId,
+        turn,
+        windowIndex,
+        eventId: 'state-recovery-invalidated:session-complete',
+      });
+    }
     this.floorborn.markSessionComplete(sessionId);
   }
 
