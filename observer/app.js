@@ -116,18 +116,18 @@ function renderUnits(container, units, own = false) {
 
 function unitCard(unit, own) {
   const integrity = Number(unit.integrity ?? 0);
-  const max = Number(unit.maxIntegrity ?? Math.max(3, integrity));
-  const level = integrity <= 1 ? 'danger' : integrity === 2 ? 'warn' : 'good';
+  const role = unit.role || unit.classification || (own ? 'known group' : 'visible contact');
+  const isCombat = role === 'combat' || role === 'combat-contact';
+  const level = integrity <= 0 ? 'danger' : isCombat && integrity === 1 ? 'warn' : 'good';
   const card = document.createElement('div');
   card.className = `unit ${level}`;
-  card.style.setProperty('--meter', `${Math.max(0, Math.min(100, (integrity / Math.max(1, max)) * 100))}%`);
   const id = unit.id || unit.groupId || 'contact';
-  const position = unit.position || (own ? 'known' : 'visible');
-  card.innerHTML = `<div class="unit-top"><span class="unit-name"></span><span class="unit-badge"></span></div><div class="meter"><span></span></div><div class="unit-meta"></div>`;
+  const position = unit.position || unit.region || (own ? 'known' : 'visible');
+  card.innerHTML = `<div class="unit-top"><span class="unit-name"></span><span class="unit-badge"></span></div><div class="unit-meta"></div>`;
   card.querySelector('.unit-name').textContent = pretty(id);
   card.querySelector('.unit-badge').textContent = position;
-  const fort = Number(unit.fortification ?? 0);
-  card.querySelector('.unit-meta').textContent = `Integrity ${integrity}${fort ? ` · Fortified ${fort}` : ''}`;
+  const fortified = Boolean(unit.fortified) || Number(unit.fortification ?? 0) > 0;
+  card.querySelector('.unit-meta').textContent = `${pretty(role)} · Integrity ${integrity}${fortified ? ' · Fortified' : ''}`;
   return card;
 }
 
@@ -142,7 +142,9 @@ function renderActions(actions) {
     const strong = document.createElement('strong');
     strong.textContent = actionLabel(action);
     const meta = document.createElement('span');
-    const tags = Array.isArray(action.tags) && action.tags.length ? action.tags.join(' · ') : action.kind || 'legal command';
+    const tags = Array.isArray(action.affordanceTags) && action.affordanceTags.length
+      ? action.affordanceTags.join(' · ')
+      : action.kind || 'legal command';
     meta.innerHTML = '<span></span><span></span>';
     meta.children[0].textContent = tags;
     meta.children[1].textContent = `cost ${action.effectiveCost ?? 0}`;
