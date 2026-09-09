@@ -468,7 +468,9 @@ function freshPlayerState() {
 }
 
 function groupsView(groups) {
-  return Object.entries(groups).map(([id, group]) => ({ id, ...stableClone(group) }));
+  return Object.entries(groups)
+    .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
+    .map(([id, group]) => ({ id, ...stableClone(group) }));
 }
 
 function centerCombatIds(player) {
