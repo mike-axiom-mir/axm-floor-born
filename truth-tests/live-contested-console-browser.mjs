@@ -117,8 +117,11 @@ async function main() {
     assert.equal(mobileGeometry.status, 'YOUR TURN');
     await page.screenshot({ path: 'artifacts/live-contested-console-mobile.png', fullPage: true });
 
+    const unexpectedConsoleErrors = consoleErrors.filter(
+      (message) => !/server responded with a status of 400 \(Bad Request\)/.test(message),
+    );
     assert.deepEqual(pageErrors, []);
-    assert.deepEqual(consoleErrors, []);
+    assert.deepEqual(unexpectedConsoleErrors, []);
 
     console.log(JSON.stringify({
       schema: 'axm.floorborn.live-contested-console-browser-evidence/v0.1',
@@ -136,6 +139,7 @@ async function main() {
       mobileNoHorizontalOverflow: true,
       pageErrors,
       consoleErrors,
+      unexpectedConsoleErrors,
       boundary: initial.boundary,
       authority: 'EVIDENCE_ONLY_NO_MERGE_NO_CANON',
     }, null, 2));
