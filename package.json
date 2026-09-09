@@ -4,6 +4,29 @@
   "private": true,
   "type": "module",
   "description": "Deterministic machine-floor operational-player research lab.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/capability.js"
+  },
+  "bin": {
+    "axm-floorborn-player": "./bin/floorborn-player.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs/PORTABLE_CAPABILITY.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "capability": {
+    "schema": "axm.floorborn.capability/v0.1",
+    "id": "axm.floorborn.bounded-player-process",
+    "status": "EXPERIMENTAL",
+    "entry": "./src/capability.js",
+    "bin": "axm-floorborn-player",
+    "offline": true,
+    "authority": "NO_GAME_MUTATION_NO_MERGE_NO_CANON"
+  },
   "scripts": {
     "test": "node --test",
     "demo": "node experiments/first-proof.js",
@@ -23,7 +46,9 @@
     "adapted-contest": "node experiments/adapted-contest-proof.js",
     "recovery-lifecycle": "node experiments/recovery-lifecycle-proof.js",
     "state-recovery": "node experiments/state-grounded-recovery-proof.js",
-    "snapshot-contract": "node --test test/live-contested-snapshot.test.js test/live-contested-rts.test.js test/live-contested-fog-resume.test.js"
+    "snapshot-contract": "node --test test/live-contested-snapshot.test.js test/live-contested-rts.test.js test/live-contested-fog-resume.test.js",
+    "capability:test": "node --test test/portable-capability.test.js",
+    "capability:describe": "node bin/floorborn-player.js describe"
   },
   "engines": {
     "node": ">=24"
