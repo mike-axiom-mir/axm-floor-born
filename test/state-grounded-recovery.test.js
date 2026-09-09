@@ -6,6 +6,7 @@ import {
   replayStateRecoveryContestedRts,
   StateRecoveryContestedRtsSession,
 } from '../src/state-recovery-contested-rts.js';
+import { digest } from '../src/stable.js';
 import { ingestVisibleConsequences } from '../src/visible-consequence.js';
 
 function legal(game, playerId, actionId) {
@@ -45,6 +46,28 @@ function proposal(player, actionId) {
   assert.ok(found, `${actionId} proposal should exist`);
   return found;
 }
+
+test('state-recovery observation identity survives a snapshot roundtrip', () => {
+  const original = new StateRecoveryContestedRtsSession({
+    sessionId: 'v15-observation-roundtrip',
+    playerIds: ['floorborn-001', 'peer-001'],
+  });
+  const restored = new StateRecoveryContestedRtsSession({
+    sessionId: 'v15-observation-roundtrip',
+    playerIds: ['floorborn-001', 'peer-001'],
+    snapshot: original.snapshot(),
+  });
+
+  const before = original.observe('floorborn-001');
+  const after = restored.observe('floorborn-001');
+
+  assert.deepEqual(after, before);
+  assert.equal(digest(after), digest(before));
+  assert.deepEqual(
+    after.rts.ownGroups.map((group) => group.id),
+    ['army-alpha', 'army-beta', 'scout'],
+  );
+});
 
 test('damaged base combat group receives an ordinary one-action stabilization affordance', () => {
   const { game } = makeCriticalRetreat('v15-stabilize-affordance');
