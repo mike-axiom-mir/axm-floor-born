@@ -1,0 +1,57 @@
+name: Live contested console browser truth
+
+on:
+  pull_request:
+    paths:
+      - 'observer/**'
+      - 'src/live-contested-rts.js'
+      - 'test/live-contested-console.test.js'
+      - 'truth-tests/live-contested-console-browser.mjs'
+      - '.github/workflows/live-contested-console-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium:
+    name: Real loopback console · Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact review head
+        uses: actions/checkout@v4
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Syntax gate
+        run: |
+          node --check observer/app.js
+          node --check observer/server.js
+          node --check truth-tests/live-contested-console-browser.mjs
+
+      - name: Run existing real-core console contract
+        run: node --test test/live-contested-console.test.js
+
+      - name: Run complete stacked repository suite
+        run: npm test
+
+      - name: Install CI-only Chromium harness
+        run: |
+          npm install --no-save --package-lock=false playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Exercise actual loopback server and contested runtime in Chromium
+        run: node truth-tests/live-contested-console-browser.mjs
+
+      - name: Preserve browser frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-contested-console-browser-evidence
+          path: artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 7
