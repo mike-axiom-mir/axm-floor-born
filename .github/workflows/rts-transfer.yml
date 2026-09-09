@@ -50,6 +50,8 @@ jobs:
         run: |
           set -o pipefail
           npm run state-recovery 2>&1 | tee v15-state-grounded-recovery.log
+      - name: Verify live contested restart contract
+        run: npm run snapshot-contract
       - name: Upload v0.15 state-grounded recovery proof
         if: always()
         uses: actions/upload-artifact@v4

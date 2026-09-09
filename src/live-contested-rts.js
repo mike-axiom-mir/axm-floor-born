@@ -5,9 +5,23 @@ import {
 } from './state-recovery-contested-rts.js';
 import { ingestVisibleConsequences } from './visible-consequence.js';
 import { stableClone } from './stable.js';
+import {
+  createLiveContestedReplayAnchor,
+  LIVE_CONTESTED_CHAT_ID,
+  LIVE_CONTESTED_FLOORBORN_ID,
+  makeLiveContestedDecisionReceipt,
+  migrateLiveContestedSnapshot,
+  sealLiveContestedSnapshot,
+  summarizeLiveContestedReceipt,
+} from './live-contested-snapshot.js';
 
-export const LIVE_CONTESTED_FLOORBORN_ID = 'floorborn-001';
-export const LIVE_CONTESTED_CHAT_ID = 'chat-001';
+export {
+  inspectLiveContestedSnapshot,
+  LIVE_CONTESTED_CHAT_ID,
+  LIVE_CONTESTED_FLOORBORN_ID,
+  LIVE_CONTESTED_SNAPSHOT_SCHEMA,
+  migrateLiveContestedSnapshot,
+} from './live-contested-snapshot.js';
 
 export function createLiveContestedRts({
   sessionId,
@@ -26,12 +40,12 @@ export function createLiveContestedRts({
     sessionId,
     playerIds: [LIVE_CONTESTED_FLOORBORN_ID, LIVE_CONTESTED_CHAT_ID],
   });
-
-  return advanceFloorborn(serializeLive(sessionId, floorborn, game, [], []));
+  const replayAnchor = createLiveContestedReplayAnchor({ sessionId, floorborn, game });
+  return advanceFloorborn(serializeLive(sessionId, floorborn, game, [], [], replayAnchor));
 }
 
 export function applyLiveContestedChatAction(liveSnapshot, actionId) {
-  const { game, floorborn } = restoreLive(liveSnapshot);
+  const { game, floorborn, snapshot } = restoreLive(liveSnapshot);
   if (game.isComplete()) throw new Error('live contested RTS session is already complete');
   if (game.activePlayerId() !== LIVE_CONTESTED_CHAT_ID) {
     throw new Error('it is not the chat contested RTS command opportunity');
@@ -42,45 +56,52 @@ export function applyLiveContestedChatAction(liveSnapshot, actionId) {
   if (!action) throw new Error(`chat selected illegal contested RTS action id: ${actionId}`);
 
   const receipt = game.step(LIVE_CONTESTED_CHAT_ID, action);
-  const transcript = [...liveSnapshot.transcript, summarize('chat', receipt)];
+  const transcript = [...snapshot.transcript, summarizeLiveContestedReceipt(receipt)];
+  if (game.isComplete()) {
+    floorborn.markSessionComplete(snapshot.sessionId, {
+      turn: game.turn,
+      windowIndex: game.windowIndex,
+    });
+  }
   const updated = serializeLive(
-    liveSnapshot.sessionId,
+    snapshot.sessionId,
     floorborn,
     game,
     transcript,
-    liveSnapshot.floorbornDecisionReceipts,
+    snapshot.floorbornDecisionReceipts,
+    snapshot.replayAnchor,
   );
   return advanceFloorborn(updated);
 }
 
 export function liveContestedRtsView(liveSnapshot) {
-  const { game } = restoreLive(liveSnapshot);
+  const { game, snapshot } = restoreLive(liveSnapshot);
   return stableClone({
     complete: game.isComplete(),
     chatObservation: !game.isComplete() && game.activePlayerId() === LIVE_CONTESTED_CHAT_ID
       ? game.observe(LIVE_CONTESTED_CHAT_ID)
       : null,
-    transcript: liveSnapshot.transcript,
+    transcript: snapshot.transcript,
   });
 }
 
 export function revealCompletedLiveContestedRts(liveSnapshot) {
-  const { game, floorborn } = restoreLive(liveSnapshot);
+  const { game, floorborn, snapshot } = restoreLive(liveSnapshot);
   if (!game.isComplete()) throw new Error('live contested RTS session is not complete');
 
   const replayed = replayStateRecoveryContestedRts({
-    sessionId: liveSnapshot.sessionId,
+    sessionId: snapshot.sessionId,
     playerIds: [LIVE_CONTESTED_FLOORBORN_ID, LIVE_CONTESTED_CHAT_ID],
     receipts: game.receipts,
   });
 
   return stableClone({
-    sessionId: liveSnapshot.sessionId,
+    sessionId: snapshot.sessionId,
     publicState: game.publicState(),
     receipts: game.receipts,
-    transcript: liveSnapshot.transcript,
+    transcript: snapshot.transcript,
     floorborn: floorborn.snapshot(),
-    floorbornDecisionReceipts: liveSnapshot.floorbornDecisionReceipts,
+    floorbornDecisionReceipts: snapshot.floorbornDecisionReceipts,
     replayedPublicState: replayed,
   });
 }
@@ -91,9 +112,9 @@ export function verifyLiveContestedRts(liveSnapshot) {
 }
 
 function advanceFloorborn(liveSnapshot) {
-  const { game, floorborn } = restoreLive(liveSnapshot);
-  const transcript = [...liveSnapshot.transcript];
-  const decisions = [...liveSnapshot.floorbornDecisionReceipts];
+  const { game, floorborn, snapshot } = restoreLive(liveSnapshot);
+  const transcript = [...snapshot.transcript];
+  const decisions = [...snapshot.floorbornDecisionReceipts];
   let guard = 0;
 
   while (!game.isComplete() && game.activePlayerId() === LIVE_CONTESTED_FLOORBORN_ID) {
@@ -107,64 +128,52 @@ function advanceFloorborn(liveSnapshot) {
     const receipt = game.step(LIVE_CONTESTED_FLOORBORN_ID, action);
     floorborn.learn(receipt);
 
-    decisions.push({
-      turn: receipt.turn,
-      windowIndex: receipt.windowIndex,
-      observationDigest: receipt.observationDigest,
-      ingestedConsequences: ingested,
-      decision,
-      actionId: action.id,
-      outcomeEventId: receipt.outcome.eventId,
-    });
-    transcript.push(summarize('floorborn', receipt));
+    decisions.push(makeLiveContestedDecisionReceipt(receipt, ingested, decision, action));
+    transcript.push(summarizeLiveContestedReceipt(receipt));
   }
 
   if (game.isComplete()) {
-    floorborn.markSessionComplete(liveSnapshot.sessionId, {
+    floorborn.markSessionComplete(snapshot.sessionId, {
       turn: game.turn,
       windowIndex: game.windowIndex,
     });
   }
 
-  return serializeLive(liveSnapshot.sessionId, floorborn, game, transcript, decisions);
+  return serializeLive(
+    snapshot.sessionId,
+    floorborn,
+    game,
+    transcript,
+    decisions,
+    snapshot.replayAnchor,
+  );
 }
 
 function restoreLive(snapshot) {
-  if (!snapshot || snapshot.schema !== 'axm.floorborn.live-contested-rts.v0.1') {
-    throw new Error('unsupported live contested RTS snapshot');
-  }
-
-  const floorborn = StateGroundedRecoveryPlayer.restore(snapshot.floorborn);
+  const normalized = migrateLiveContestedSnapshot(snapshot);
+  const floorborn = StateGroundedRecoveryPlayer.restore(normalized.floorborn);
   const game = new StateRecoveryContestedRtsSession({
-    sessionId: snapshot.sessionId,
+    sessionId: normalized.sessionId,
     playerIds: [LIVE_CONTESTED_FLOORBORN_ID, LIVE_CONTESTED_CHAT_ID],
-    snapshot: snapshot.game,
+    snapshot: normalized.game,
   });
-  return { floorborn, game };
+  return { floorborn, game, snapshot: normalized };
 }
 
-function serializeLive(sessionId, floorborn, game, transcript, floorbornDecisionReceipts) {
-  return stableClone({
-    schema: 'axm.floorborn.live-contested-rts.v0.1',
+function serializeLive(
+  sessionId,
+  floorborn,
+  game,
+  transcript,
+  floorbornDecisionReceipts,
+  replayAnchor,
+) {
+  return sealLiveContestedSnapshot({
     sessionId,
-    floorborn: floorborn.snapshot(),
-    game: game.snapshot(),
+    floorborn,
+    game,
     transcript,
     floorbornDecisionReceipts,
+    replayAnchor,
   });
-}
-
-function summarize(actor, receipt) {
-  return {
-    actor,
-    playerId: receipt.playerId,
-    turn: receipt.turn,
-    windowIndex: receipt.windowIndex,
-    actionId: receipt.action.id,
-    effectiveCost: receipt.effectiveCost,
-    budgetBefore: receipt.budgetBefore,
-    budgetAfter: receipt.budgetAfter,
-    eventId: receipt.outcome.eventId,
-    description: receipt.outcome.description,
-  };
 }

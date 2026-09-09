@@ -137,6 +137,15 @@ npm run campaign
 
 The verified v0.7.0 PR head passes **52 tests** plus every named gate through the multi-session campaign.
 
+## Live contested restart contract
+
+The live state-grounded contested RTS bridge emits versioned v0.2 snapshots.
+Canonical current state, retained history, and the replay origin are separately
+SHA-256-bound, then checked by deterministic game and Floorborn replay before a
+snapshot can be viewed or resumed. Legacy v0.1 snapshots cross an explicit
+`legacy-v0.1-import` trust boundary instead of receiving retroactive replay
+claims. See [`docs/LIVE_CONTESTED_SNAPSHOT.md`](docs/LIVE_CONTESTED_SNAPSHOT.md).
+
 ## What "experience" means here
 
 This project does not claim consciousness or subjective experience. **Experience** means retained causal history: observations, actions, outcomes, repeated patterns, companion-specific evidence, revisable signal evidence, explicit intentions, and measurable later behavioral effects.

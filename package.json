@@ -22,7 +22,8 @@
     "recovery": "node experiments/recovery-proof.js",
     "adapted-contest": "node experiments/adapted-contest-proof.js",
     "recovery-lifecycle": "node experiments/recovery-lifecycle-proof.js",
-    "state-recovery": "node experiments/state-grounded-recovery-proof.js"
+    "state-recovery": "node experiments/state-grounded-recovery-proof.js",
+    "snapshot-contract": "node --test test/live-contested-snapshot.test.js test/live-contested-rts.test.js test/live-contested-fog-resume.test.js"
   },
   "engines": {
     "node": ">=24"
