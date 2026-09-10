@@ -32,6 +32,16 @@ async function readView(page) {
   });
 }
 
+async function setTestGamepad(page, options) {
+  await page.evaluate((next) => window.__AXM_SET_TEST_GAMEPAD__(next), options);
+  await page.waitForTimeout(70);
+}
+
+async function pulseDirection(page, direction) {
+  await setTestGamepad(page, { mapping: 'standard', direction, commit: false });
+  await setTestGamepad(page, { mapping: 'standard', direction: 0, commit: false });
+}
+
 async function main() {
   await mkdir('artifacts', { recursive: true });
 
@@ -53,6 +63,33 @@ async function main() {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
 
+  await page.addInitScript(() => {
+    const button = (pressed = false) => ({ pressed, touched: pressed, value: pressed ? 1 : 0 });
+    window.__AXM_TEST_GAMEPAD__ = null;
+    window.__AXM_SET_TEST_GAMEPAD__ = ({ mapping = 'standard', direction = 0, commit = false } = {}) => {
+      const buttons = Array.from({ length: 17 }, () => button(false));
+      if (direction < 0) buttons[12] = button(true);
+      if (direction > 0) buttons[13] = button(true);
+      if (commit) buttons[0] = button(true);
+      window.__AXM_TEST_GAMEPAD__ = {
+        id: mapping === 'standard' ? 'AXM CI Standard Gamepad' : 'AXM CI Unknown Gamepad',
+        index: 0,
+        connected: true,
+        mapping,
+        timestamp: performance.now(),
+        axes: [0, 0, 0, 0],
+        buttons,
+      };
+    };
+    window.__AXM_CLEAR_TEST_GAMEPAD__ = () => {
+      window.__AXM_TEST_GAMEPAD__ = null;
+    };
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => window.__AXM_TEST_GAMEPAD__ ? [window.__AXM_TEST_GAMEPAD__] : [],
+    });
+  });
+
   try {
     const response = await page.goto(origin, { waitUntil: 'domcontentloaded' });
     assert.equal(response?.status(), 200);
@@ -69,6 +106,14 @@ async function main() {
     assert.ok(Array.isArray(initial.legalActions) && initial.legalActions.length > 0);
     assertPlayerBoundary(initial);
 
+    // A controller may already have a held button when the page observes it.
+    // Admission samples that initial state but must not turn it into a command edge.
+    await setTestGamepad(page, { mapping: 'standard', direction: 0, commit: true });
+    await page.waitForFunction(() => document.getElementById('controllerState')?.textContent === 'READY');
+    await page.waitForTimeout(140);
+    assert.deepEqual(await readView(page), initial, 'held A on controller discovery must not commit an action');
+    await setTestGamepad(page, { mapping: 'standard', direction: 0, commit: false });
+
     const selectedIndex = Math.max(
       0,
       initial.legalActions.findIndex((action) => Number(action.effectiveCost) > 0),
@@ -76,12 +121,27 @@ async function main() {
     const selected = initial.legalActions[selectedIndex];
     const actionButtons = page.locator('#actions button.action');
     assert.equal(await actionButtons.count(), initial.legalActions.length);
-    await actionButtons.nth(selectedIndex).click();
-    await page.waitForFunction(() => document.getElementById('feedback')?.textContent?.startsWith('Committed '));
 
+    for (let step = 0; step <= selectedIndex; step += 1) {
+      await pulseDirection(page, 1);
+    }
+    await page.waitForFunction(
+      (actionId) => document.activeElement?.dataset?.actionId === actionId,
+      selected.id,
+    );
+
+    await setTestGamepad(page, { mapping: 'standard', direction: 0, commit: true });
+    await page.waitForFunction(() => document.getElementById('feedback')?.textContent?.startsWith('Committed '));
     const afterAction = await readView(page);
     assert.ok(afterAction.transcript.length > initial.transcript.length);
     assertPlayerBoundary(afterAction);
+
+    // Keep A physically held across several render frames. Edge admission must prevent
+    // that held state from authoring a second command after the legal-action DOM rerenders.
+    await page.waitForTimeout(220);
+    const whileHeld = await readView(page);
+    assert.deepEqual(whileHeld, afterAction, 'held A must not repeat a command after rerender');
+    await setTestGamepad(page, { mapping: 'standard', direction: 0, commit: false });
 
     const beforeRejected = structuredClone(afterAction);
     const rejectedStatus = await page.evaluate(async () => {
@@ -97,7 +157,16 @@ async function main() {
     const afterRejected = await readView(page);
     assert.deepEqual(afterRejected, beforeRejected, 'rejected hidden action must not mutate player-visible state');
 
-    await page.screenshot({ path: 'artifacts/live-contested-console-desktop.png', fullPage: true });
+    const desktopGeometry = await page.evaluate(() => ({
+      innerWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      controllerState: document.getElementById('controllerState')?.textContent,
+      minActionHeight: Math.min(...[...document.querySelectorAll('#actions button.action')].map((node) => node.getBoundingClientRect().height)),
+    }));
+    assert.ok(desktopGeometry.scrollWidth <= desktopGeometry.innerWidth, JSON.stringify(desktopGeometry));
+    assert.equal(desktopGeometry.controllerState, 'READY');
+    assert.ok(desktopGeometry.minActionHeight >= 44, JSON.stringify(desktopGeometry));
+    await page.screenshot({ path: 'artifacts/live-contested-console-gamepad-desktop.png', fullPage: true });
 
     await page.locator('#resetButton').click();
     await page.waitForFunction(() => document.getElementById('feedback')?.textContent?.includes('deterministic opening state'));
@@ -105,17 +174,25 @@ async function main() {
     assert.deepEqual(reset, initial, 'reset must restore the exact opening player-facing view');
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForFunction(() => document.querySelectorAll('#actions button.action').length > 0);
+    await setTestGamepad(page, { mapping: '', direction: 1, commit: true });
+    await page.waitForFunction(() => document.getElementById('controllerState')?.textContent === 'HELD · NON-STANDARD');
+    await page.waitForTimeout(140);
+    assert.deepEqual(await readView(page), reset, 'non-standard controller input must remain held outside action admission');
+
     const mobileGeometry = await page.evaluate(() => ({
       innerWidth: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
       actionCount: document.querySelectorAll('#actions button.action').length,
       status: document.getElementById('sessionStatus')?.textContent,
+      controllerState: document.getElementById('controllerState')?.textContent,
+      minActionHeight: Math.min(...[...document.querySelectorAll('#actions button.action')].map((node) => node.getBoundingClientRect().height)),
     }));
     assert.ok(mobileGeometry.scrollWidth <= mobileGeometry.innerWidth, JSON.stringify(mobileGeometry));
     assert.ok(mobileGeometry.actionCount > 0);
     assert.equal(mobileGeometry.status, 'YOUR TURN');
-    await page.screenshot({ path: 'artifacts/live-contested-console-mobile.png', fullPage: true });
+    assert.equal(mobileGeometry.controllerState, 'HELD · NON-STANDARD');
+    assert.ok(mobileGeometry.minActionHeight >= 44, JSON.stringify(mobileGeometry));
+    await page.screenshot({ path: 'artifacts/live-contested-console-gamepad-held-mobile.png', fullPage: true });
 
     const unexpectedConsoleErrors = consoleErrors.filter(
       (message) => !/server responded with a status of 400 \(Bad Request\)/.test(message),
@@ -124,19 +201,25 @@ async function main() {
     assert.deepEqual(unexpectedConsoleErrors, []);
 
     console.log(JSON.stringify({
-      schema: 'axm.floorborn.live-contested-console-browser-evidence/v0.1',
+      schema: 'axm.floorborn.live-contested-console-browser-evidence/v0.2',
       browser: browser.version(),
       origin: 'loopback-ephemeral',
       realServer: true,
       realContestedRuntime: true,
       initialLegalActions: initial.legalActions.length,
       exercisedActionId: selected.id,
+      inputPath: 'standard-gamepad-dpad-plus-a',
+      heldInputOnDiscoveryDidNotCommit: true,
+      heldCommitDidNotRepeat: true,
+      nonStandardControllerHeld: true,
       transcriptBefore: initial.transcript.length,
       transcriptAfter: afterAction.transcript.length,
       hiddenActionStatus: rejectedStatus,
       rejectedActionStateHeld: true,
       resetExact: true,
+      desktopNoHorizontalOverflow: true,
       mobileNoHorizontalOverflow: true,
+      minActionHeight: Math.min(desktopGeometry.minActionHeight, mobileGeometry.minActionHeight),
       pageErrors,
       consoleErrors,
       unexpectedConsoleErrors,
