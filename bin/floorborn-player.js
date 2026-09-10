@@ -5,6 +5,7 @@ import {
   processFloorbornRequest,
 } from '../src/capability.js';
 import { stableStringify } from '../src/stable.js';
+import { parseStrictJson } from '../src/strict-json.js';
 
 const MAX_INPUT_BYTES = 1024 * 1024;
 const command = process.argv[2] ?? 'help';
@@ -17,7 +18,7 @@ try {
     if (bytes.length > MAX_INPUT_BYTES) throw new Error('stdin exceeds 1048576 byte limit');
     const text = bytes.toString('utf8').trim();
     if (!text) throw new Error('process requires one JSON request on stdin');
-    const request = JSON.parse(text);
+    const request = parseStrictJson(text);
     write(processFloorbornRequest(request));
   } else if (command === 'help' || command === '--help' || command === '-h') {
     process.stdout.write('Usage: axm-floorborn-player <describe|process>\n');

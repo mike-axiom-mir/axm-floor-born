@@ -47,7 +47,9 @@ printf '%s' "$REQUEST_JSON" | node bin/floorborn-player.js process
 
 After a local tarball install, the same commands are available through `axm-floorborn-player`.
 
-The CLI accepts at most 1 MiB on stdin, one JSON value per invocation, writes one deterministic JSON response on stdout, and exits with status 2 plus a bounded JSON error on invalid input.
+The CLI accepts at most 1 MiB on stdin, one JSON value per invocation, writes one deterministic JSON response on stdout, and exits with status 2 plus a bounded JSON error on invalid input. Before semantic request admission it also rejects duplicate object-member names at every JSON depth, including escaped spellings that decode to the same member name. This prevents last-key-wins parsing from erasing contradictory raw input.
+
+That duplicate-member guarantee belongs specifically to the CLI byte boundary. Library callers pass already-materialized JavaScript objects to `processFloorbornRequest()`, so duplicate textual members that an upstream parser already collapsed cannot be reconstructed or rejected there.
 
 ## Operations
 

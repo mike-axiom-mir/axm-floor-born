@@ -20,10 +20,14 @@ jobs:
       - name: Syntax
         run: |
           node --check src/capability.js
+          node --check src/strict-json.js
           node --check bin/floorborn-player.js
           node --check test/portable-capability.test.js
+          node --check test/cli-json-admission.test.js
       - name: Focused portable capability regressions
         run: npm run capability:test
+      - name: Strict CLI JSON admission regressions
+        run: node --test test/cli-json-admission.test.js
       - name: Complete inherited repository suite
         run: npm test
       - name: Pack exact local artifact
@@ -43,6 +47,7 @@ jobs:
             'src/floorborn.js',
             'src/protocol.js',
             'src/stable.js',
+            'src/strict-json.js',
             'docs/PORTABLE_CAPABILITY.md',
           ]) assert.ok(names.has(required), `missing packed file: ${required}`);
           for (const forbidden of ['test/', 'truth-tests/', 'experiments/', 'observer/', '.github/']) {
@@ -102,10 +107,24 @@ jobs:
           assert.equal(cli.status, 0, cli.stderr);
           const cliResponse = JSON.parse(cli.stdout);
           assert.deepEqual(cliResponse, response);
+
+          const ambiguousCli = spawnSync(
+            process.execPath,
+            ['node_modules/axm-floor-born/bin/floorborn-player.js', 'process'],
+            {
+              input: JSON.stringify(request).replace('"operation":"decide"', '"operation":"describe","operation":"decide"'),
+              encoding: 'utf8',
+            },
+          );
+          assert.equal(ambiguousCli.status, 2, ambiguousCli.stdout);
+          assert.equal(ambiguousCli.stdout, '');
+          assert.match(JSON.parse(ambiguousCli.stderr).error.message, /duplicate JSON member: operation/);
+
           console.log(JSON.stringify({
             provider: descriptor.id,
             selectedAction: response.action.id,
             receiptVerified: true,
+            duplicateJsonRejected: true,
             gameMutationAuthority: response.authority.gameMutation,
             sourceCheckoutRequired: false,
           }));
