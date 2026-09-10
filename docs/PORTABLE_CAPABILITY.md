@@ -10,7 +10,7 @@ The consumer remains responsible for constructing an already-bounded player obse
 
 The process returns a caller-owned Floorborn snapshot after each state-changing operation. That makes continuity portable without a daemon, account, cloud service, AI model, or hidden background state.
 
-The response receipt SHA-256 binds the deterministic response body. It is content-integrity evidence only; it does not authenticate the provider, authorize game mutation, approve a merge, or establish CANON.
+The v0.2 response receipt binds both the deterministic response body and the exact canonical request identity. `verifyProcessResponse()` checks internal response integrity. `verifyProcessExchange()` additionally re-executes the exact request and requires the complete response to match, so a valid response from another request or a self-consistently re-sealed false result is held. Replay remains local, deterministic verification only; it does not authenticate the provider, authorize game mutation, approve a merge, or establish CANON.
 
 ## Library use
 
@@ -19,10 +19,10 @@ This package remains `private: true`; the seam is for explicit local/path/tarbal
 ```js
 import {
   processFloorbornRequest,
-  verifyProcessResponse,
+  verifyProcessExchange,
 } from 'axm-floor-born';
 
-const response = processFloorbornRequest({
+const request = {
   schema: 'axm.floorborn.process-request/v0.1',
   operation: 'decide',
   player: {
@@ -30,9 +30,11 @@ const response = processFloorbornRequest({
     lineageId: 'local-lineage-001',
   },
   observation: playerVisibleObservation,
-});
+};
+const response = processFloorbornRequest(request);
 
-if (!verifyProcessResponse(response)) throw new Error('response drift');
+const verification = verifyProcessExchange({ request, response });
+if (verification.result !== 'PASS') throw new Error(verification.problems.join(', '));
 // response.action is still only a candidate. The game owns admission/execution.
 ```
 

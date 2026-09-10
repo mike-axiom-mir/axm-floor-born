@@ -9,8 +9,9 @@ import { digest, stableClone } from './stable.js';
 export const FLOORBORN_CAPABILITY_SCHEMA = 'axm.floorborn.capability/v0.1';
 export const FLOORBORN_CAPABILITY_ID = 'axm.floorborn.bounded-player-process';
 export const FLOORBORN_PROCESS_REQUEST_SCHEMA = 'axm.floorborn.process-request/v0.1';
-export const FLOORBORN_PROCESS_RESPONSE_SCHEMA = 'axm.floorborn.process-response/v0.1';
-export const FLOORBORN_PROCESS_RECEIPT_SCHEMA = 'axm.floorborn.process-receipt/v0.1';
+export const FLOORBORN_PROCESS_RESPONSE_SCHEMA = 'axm.floorborn.process-response/v0.2';
+export const FLOORBORN_PROCESS_RECEIPT_SCHEMA = 'axm.floorborn.process-receipt/v0.2';
+export const FLOORBORN_PROCESS_EXCHANGE_VERIFICATION_SCHEMA = 'axm.floorborn.process-exchange-verification/v0.1';
 
 const AUTHORITY = Object.freeze({
   automaticSelection: false,
@@ -37,6 +38,7 @@ const CAPABILITY = Object.freeze({
     requestSchema: FLOORBORN_PROCESS_REQUEST_SCHEMA,
     responseSchema: FLOORBORN_PROCESS_RESPONSE_SCHEMA,
     receiptSchema: FLOORBORN_PROCESS_RECEIPT_SCHEMA,
+    exchangeVerificationSchema: FLOORBORN_PROCESS_EXCHANGE_VERIFICATION_SCHEMA,
     operations: ['describe', 'decide', 'learn', 'complete'],
     maxCliInputBytes: 1048576,
   },
@@ -45,7 +47,8 @@ const CAPABILITY = Object.freeze({
     observationAdmission: 'CALLER_OWNS_PLAYER_VISIBLE_OBSERVATION_BOUNDARY',
     selectedAction: 'CANDIDATE_ONLY_HOST_MUST_APPLY_THROUGH_GAME_PLAYER_DOOR',
     retainedState: 'CALLER_OWNED_LOCAL_SNAPSHOT',
-    receipt: 'CONTENT_INTEGRITY_NOT_AUTHOR_AUTHENTICATION',
+    receipt: 'EXACT_REQUEST_BOUND_RESPONSE_CONTENT_INTEGRITY',
+    exchangeVerification: 'DETERMINISTIC_REPLAY_NOT_AUTHOR_AUTHENTICATION',
   },
   authority: AUTHORITY,
 });
@@ -70,7 +73,7 @@ export function processFloorbornRequest(request) {
         operation: 'describe',
         capability: describeCapability(),
         authority: AUTHORITY,
-      });
+      }, request);
     case 'decide':
       assertAllowedKeys(request, ['schema', 'operation', 'observation', 'player', 'playerSnapshot']);
       return decide(request);
@@ -90,10 +93,65 @@ export function verifyProcessResponse(response) {
   if (response.schema !== FLOORBORN_PROCESS_RESPONSE_SCHEMA) return false;
   if (!response.receipt || response.receipt.schema !== FLOORBORN_PROCESS_RECEIPT_SCHEMA) return false;
   if (response.receipt.authority !== 'CONTENT_INTEGRITY_ONLY_NO_EXECUTION_NO_MERGE_NO_CANON') return false;
-  if (typeof response.receipt.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(response.receipt.sha256)) return false;
+  if (!sameKeys(response.receipt, ['authority', 'requestSha256', 'responseSha256', 'schema'])) return false;
+  if (typeof response.receipt.requestSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(response.receipt.requestSha256)) return false;
+  if (typeof response.receipt.responseSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(response.receipt.responseSha256)) return false;
 
   const { receipt, ...body } = response;
-  return digest(body) === receipt.sha256;
+  return digest(body) === receipt.responseSha256;
+}
+
+export function verifyProcessExchange({ request, response } = {}) {
+  let requestSha256 = null;
+  let replayedResponse = null;
+  let replayedResponseSha256 = null;
+  let requestIdentityVerified = false;
+  let deterministicReplayVerified = false;
+  const problems = [];
+
+  if (!verifyProcessResponse(response)) problems.push('RESPONSE_INTEGRITY_INVALID');
+
+  try {
+    requestSha256 = digest(stableClone(request));
+    requestIdentityVerified = response?.receipt?.requestSha256 === requestSha256;
+    if (!requestIdentityVerified) problems.push('REQUEST_IDENTITY_MISMATCH');
+    replayedResponse = processFloorbornRequest(request);
+  } catch {
+    problems.push('REQUEST_REPLAY_REJECTED');
+  }
+
+  if (replayedResponse) {
+    replayedResponseSha256 = digest(replayedResponse);
+    try {
+      deterministicReplayVerified = replayedResponseSha256 === digest(response);
+    } catch {
+      deterministicReplayVerified = false;
+    }
+    if (!deterministicReplayVerified) problems.push('DETERMINISTIC_REPLAY_MISMATCH');
+  }
+
+  const uniqueProblems = [...new Set(problems)];
+  const core = {
+    schema: FLOORBORN_PROCESS_EXCHANGE_VERIFICATION_SCHEMA,
+    result: uniqueProblems.length === 0 ? 'PASS' : 'HOLD',
+    requestSha256,
+    responseSha256: response?.receipt?.responseSha256 ?? null,
+    replayedResponseSha256,
+    problems: uniqueProblems,
+    truth: {
+      responseContentIntegrityVerified: verifyProcessResponse(response),
+      exactRequestIdentityVerified: requestIdentityVerified,
+      deterministicReplayVerified,
+      providerAuthorshipAuthenticated: false,
+      gameMutationAuthorized: false,
+      mergeOrCanonAuthorized: false,
+    },
+    authority: 'VERIFY_ONLY_NO_EXECUTION_NO_GAME_MUTATION_NO_MERGE_NO_CANON',
+  };
+  return stableClone({
+    ...core,
+    verificationSha256: digest(core),
+  });
 }
 
 function decide(request) {
@@ -113,7 +171,7 @@ function decide(request) {
     decision: stableClone(player.lastDecision),
     playerSnapshot: player.snapshot(),
     authority: AUTHORITY,
-  });
+  }, request);
 }
 
 function learn(request) {
@@ -128,7 +186,7 @@ function learn(request) {
     operation: 'learn',
     playerSnapshot: player.snapshot(),
     authority: AUTHORITY,
-  });
+  }, request);
 }
 
 function complete(request) {
@@ -145,7 +203,7 @@ function complete(request) {
     operation: 'complete',
     playerSnapshot: player.snapshot(),
     authority: AUTHORITY,
-  });
+  }, request);
 }
 
 function restoreOrCreatePlayer(request) {
@@ -171,16 +229,23 @@ function restoreOrCreatePlayer(request) {
   });
 }
 
-function sealResponse(body) {
+function sealResponse(body, request) {
   const stableBody = stableClone(body);
   return stableClone({
     ...stableBody,
     receipt: {
       schema: FLOORBORN_PROCESS_RECEIPT_SCHEMA,
-      sha256: digest(stableBody),
+      requestSha256: digest(stableClone(request)),
+      responseSha256: digest(stableBody),
       authority: 'CONTENT_INTEGRITY_ONLY_NO_EXECUTION_NO_MERGE_NO_CANON',
     },
   });
+}
+
+function sameKeys(value, expectedKeys) {
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
 }
 
 function assertPlainObject(value, label) {

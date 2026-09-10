@@ -120,8 +120,9 @@ function assertExecutableBoundary(descriptor, packageCapability) {
   const process = descriptor.process;
   if (!process) throw new Error('executable process contract missing');
   if (process.requestSchema !== 'axm.floorborn.process-request/v0.1') throw new Error('process request schema drift');
-  if (process.responseSchema !== 'axm.floorborn.process-response/v0.1') throw new Error('process response schema drift');
-  if (process.receiptSchema !== 'axm.floorborn.process-receipt/v0.1') throw new Error('process receipt schema drift');
+  if (process.responseSchema !== 'axm.floorborn.process-response/v0.2') throw new Error('process response schema drift');
+  if (process.receiptSchema !== 'axm.floorborn.process-receipt/v0.2') throw new Error('process receipt schema drift');
+  if (process.exchangeVerificationSchema !== 'axm.floorborn.process-exchange-verification/v0.1') throw new Error('process exchange verification schema drift');
   if (process.maxCliInputBytes !== 1048576) throw new Error('CLI input bound drift');
   assertStringArray(process.operations, EXPECTED_OPERATIONS, 'process operations');
   assertStringArray(descriptor.playerProtocols, EXPECTED_PLAYER_PROTOCOLS, 'player protocols');
@@ -164,6 +165,7 @@ export async function buildArtifacts(root = process.cwd()) {
       processRequest: descriptor.process.requestSchema,
       processResponse: descriptor.process.responseSchema,
       processReceipt: descriptor.process.receiptSchema,
+      processExchangeVerification: descriptor.process.exchangeVerificationSchema,
     },
     source: {
       metadata: 'package.json',

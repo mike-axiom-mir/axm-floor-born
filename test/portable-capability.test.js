@@ -8,6 +8,7 @@ import {
   FLOORBORN_CAPABILITY_ID,
   FLOORBORN_PROCESS_REQUEST_SCHEMA,
   processFloorbornRequest,
+  verifyProcessExchange,
   verifyProcessResponse,
 } from '../src/capability.js';
 
@@ -82,6 +83,7 @@ test('same admitted observation and identity produce the same sealed decision', 
   assert.equal(left.playerSnapshot.playerId, 'floorborn-portable');
   assert.equal(left.playerSnapshot.lineageId, 'portable-lineage-001');
   assert.equal(verifyProcessResponse(left), true);
+  assert.equal(verifyProcessExchange({ request: firstDecisionRequest(), response: left }).result, 'PASS');
 });
 
 test('learning crosses the process boundary only through an explicit receipt', () => {
