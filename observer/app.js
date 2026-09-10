@@ -1,12 +1,18 @@
 const els = Object.fromEntries([
   'sessionId','windowState','budgetState','controlState','sessionStatus','objective','ownGroups','contacts',
-  'actions','actionCount','feedback','transcript','transcriptCount','resetButton',
+  'actions','actionCount','feedback','transcript','transcriptCount','resetButton','controllerState','controllerHelp',
 ].map((id) => [id, document.getElementById(id)]));
+
+const GAMEPAD_AXIS_THRESHOLD = 0.64;
 
 let state = null;
 let busy = false;
+let gamepadIdentity = null;
+let previousGamepadSample = null;
+let gamepadStatusKey = '';
 
 await refresh('Console ready. Choose one legal action; Floorborn answers through the same world rules.');
+startGamepadPolling();
 
 els.resetButton.addEventListener('click', async () => {
   if (busy) return;
@@ -15,13 +21,133 @@ els.resetButton.addEventListener('click', async () => {
 
 document.addEventListener('keydown', (event) => {
   if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-  const buttons = [...els.actions.querySelectorAll('button:not([disabled])')];
-  if (!buttons.length) return;
-  const index = Math.max(0, buttons.indexOf(document.activeElement));
-  const delta = ['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1;
-  buttons[(index + delta + buttons.length) % buttons.length].focus();
+  moveActionFocus(['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1, { announce: false });
   event.preventDefault();
 });
+
+function startGamepadPolling() {
+  if (typeof navigator.getGamepads !== 'function') {
+    setGamepadStatus('unavailable', 'UNAVAILABLE', 'This browser does not expose the Gamepad API. Keyboard and touch remain available.');
+    return;
+  }
+
+  const poll = () => {
+    let pads = [];
+    try {
+      pads = Array.from(navigator.getGamepads() || []).filter((pad) => pad && pad.connected !== false);
+    } catch {
+      gamepadIdentity = null;
+      previousGamepadSample = null;
+      setGamepadStatus('unavailable', 'UNAVAILABLE', 'Gamepad access is unavailable here. Keyboard and touch remain available.');
+      requestAnimationFrame(poll);
+      return;
+    }
+
+    const pad = pads[0];
+    if (!pad) {
+      gamepadIdentity = null;
+      previousGamepadSample = null;
+      setGamepadStatus('none', 'NOT DETECTED', 'Keyboard: Arrow keys move focus; Enter or Space commits. Standard gamepad: D-pad or left stick moves focus; A commits.');
+      requestAnimationFrame(poll);
+      return;
+    }
+
+    if (pad.mapping !== 'standard') {
+      gamepadIdentity = null;
+      previousGamepadSample = null;
+      setGamepadStatus('held', 'HELD · NON-STANDARD', 'Controller detected, but this browser did not report standard mapping. Keyboard and touch remain available; AXM does not guess button meanings.');
+      requestAnimationFrame(poll);
+      return;
+    }
+
+    const identity = `${pad.index ?? 0}:${pad.id || 'standard-gamepad'}`;
+    const sample = readGamepadSample(pad);
+    setGamepadStatus('ready', 'READY', 'D-pad or left stick moves focus · A commits. Inputs are edge-triggered, so holding a direction or A does not repeat a command.');
+
+    if (identity !== gamepadIdentity) {
+      gamepadIdentity = identity;
+      previousGamepadSample = sample;
+      requestAnimationFrame(poll);
+      return;
+    }
+
+    const previous = previousGamepadSample || sample;
+    if (sample.direction !== 0 && sample.direction !== previous.direction) {
+      moveActionFocus(sample.direction);
+    }
+    if (sample.commit && !previous.commit) {
+      commitFocusedGamepadAction();
+    }
+    previousGamepadSample = sample;
+    requestAnimationFrame(poll);
+  };
+
+  requestAnimationFrame(poll);
+}
+
+function readGamepadSample(pad) {
+  const upOrLeft = gamepadPressed(pad, 12) || gamepadPressed(pad, 14);
+  const downOrRight = gamepadPressed(pad, 13) || gamepadPressed(pad, 15);
+  let direction = upOrLeft ? -1 : downOrRight ? 1 : 0;
+
+  if (direction === 0) {
+    const x = gamepadAxis(pad, 0);
+    const y = gamepadAxis(pad, 1);
+    const dominant = Math.abs(x) > Math.abs(y) ? x : y;
+    if (Math.abs(dominant) >= GAMEPAD_AXIS_THRESHOLD) direction = dominant < 0 ? -1 : 1;
+  }
+
+  return {
+    direction,
+    commit: gamepadPressed(pad, 0),
+  };
+}
+
+function gamepadPressed(pad, index) {
+  const button = pad.buttons?.[index];
+  return Boolean(button && (button.pressed || Number(button.value) > 0.5));
+}
+
+function gamepadAxis(pad, index) {
+  const value = Number(pad.axes?.[index] ?? 0);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-1, Math.min(1, value));
+}
+
+function moveActionFocus(delta, { announce = true } = {}) {
+  const buttons = [...els.actions.querySelectorAll('button:not([disabled])')];
+  if (!buttons.length) return false;
+  const current = buttons.indexOf(document.activeElement);
+  const next = current < 0
+    ? (delta > 0 ? 0 : buttons.length - 1)
+    : (current + delta + buttons.length) % buttons.length;
+  buttons[next].focus();
+  if (announce) {
+    const label = buttons[next].querySelector('strong')?.textContent || 'legal action';
+    setFeedback(`Gamepad focus · ${label}. Press A to commit.`);
+  }
+  return true;
+}
+
+function commitFocusedGamepadAction() {
+  const focused = document.activeElement;
+  if (!(focused instanceof HTMLButtonElement) || !els.actions.contains(focused) || focused.disabled) {
+    if (moveActionFocus(1, { announce: false })) {
+      setFeedback('Gamepad focus set. Press A again to commit the highlighted legal action.');
+    }
+    return;
+  }
+  focused.click();
+}
+
+function setGamepadStatus(mode, label, help) {
+  const key = `${mode}:${label}:${help}`;
+  if (key === gamepadStatusKey) return;
+  gamepadStatusKey = key;
+  els.controllerState.dataset.mode = mode;
+  els.controllerState.textContent = label;
+  els.controllerHelp.textContent = help;
+}
 
 async function refresh(message = '') {
   setBusy(true);
@@ -138,6 +264,7 @@ function renderActions(actions) {
     button.className = 'action';
     button.type = 'button';
     button.setAttribute('role', 'listitem');
+    button.dataset.actionId = action.id;
     button.disabled = busy;
     const strong = document.createElement('strong');
     strong.textContent = actionLabel(action);
