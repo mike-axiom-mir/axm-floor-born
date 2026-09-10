@@ -44,7 +44,7 @@ function assertDuplicateRejected(input, expectedMember) {
   assert.equal(error.authority, 'NO_EXECUTION_NO_MERGE_NO_CANON');
 }
 
-test('CLI rejects duplicate top-level object members before last-key-wins parsing', () => {
+test('CLI rejects duplicate top-level object members before semantic admission', () => {
   const ambiguous = requestText().replace(
     '"operation":"decide"',
     '"operation":"describe","operation":"decide"',
