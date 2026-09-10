@@ -1,0 +1,55 @@
+{
+  "schema": "axm.public-capability-registry-receipt/v1",
+  "repository": "mike-axiom-mir/axm-floor-born",
+  "registry": {
+    "path": "registry/capabilities.jsonl",
+    "sha256": "6e5b9b4031d907515798ae294a77e5b4bd6280df3ce369734f0f8dad347b9dd9",
+    "capability_count": 1,
+    "capability_ids": [
+      "axm.floorborn.bounded-player-process"
+    ]
+  },
+  "sources": [
+    {
+      "path": "package.json",
+      "git_blob_sha1": "3369f67a0a154c81935e47e03a6fef37e410b071"
+    },
+    {
+      "path": "src/capability.js",
+      "git_blob_sha1": "97c79bf328c2914955e8c889b9ca03c0dc5d573f"
+    },
+    {
+      "path": "LICENSE",
+      "git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
+    }
+  ],
+  "compatibility": {
+    "consumer": "mike-axiom-mir/axm-discovery-buddy",
+    "pinned_ref": "565c38ecf93a9d563b02211258d8d36fcb1162b5",
+    "portable_boundary": "discovery-buddy.pyz",
+    "marker_contract": "axm.discovery-public/v1",
+    "registry_contract": "registry/*capabilit*.jsonl"
+  },
+  "pattern_provenance": {
+    "adapted_from_repository": "mike-axiom-mir/axm-EchoWorld",
+    "adapted_from_ref": "6987cf842a0f17e03f2ef679d07ec5782b30664b",
+    "adapted_paths": [
+      ".axm/discovery-public.json",
+      "tools/generate-public-capabilities.mjs",
+      ".github/workflows/public-capability-discovery.yml"
+    ],
+    "copied_runtime_code": false
+  },
+  "truth_boundary": {
+    "source_backed": true,
+    "public_export_intent": true,
+    "runtime_proof": false,
+    "execution_authority": false,
+    "automatic_selection_authority": false,
+    "automatic_install_authority": false,
+    "game_mutation_authority": false,
+    "merge_authority": false,
+    "canon_authority": false
+  },
+  "receipt_sha256": "e9ea9bdd939a03c21012d48daa048b2cc34ca4edb7267ee10e4e42387cd87025"
+}
