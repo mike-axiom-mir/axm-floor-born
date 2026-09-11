@@ -7,6 +7,7 @@ on:
       - 'src/live-contested-rts.js'
       - 'test/live-contested-console.test.js'
       - 'truth-tests/live-contested-console-browser.mjs'
+      - 'truth-tests/live-contested-visible-response.mjs'
       - '.github/workflows/live-contested-console-browser.yml'
   workflow_dispatch:
 
@@ -38,7 +39,9 @@ jobs:
         run: |
           node --check observer/app.js
           node --check observer/server.js
+          node --check observer/visible-response.js
           node --check truth-tests/live-contested-console-browser.mjs
+          node --check truth-tests/live-contested-visible-response.mjs
 
       - name: Run existing real-core console contract
         run: node --test test/live-contested-console.test.js
@@ -52,13 +55,17 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Exercise actual loopback server and contested runtime in Chromium
-        run: node truth-tests/live-contested-console-browser.mjs
+        run: |
+          node truth-tests/live-contested-console-browser.mjs
+          node truth-tests/live-contested-visible-response.mjs
 
       - name: Preserve browser frames
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: live-contested-console-browser-evidence
-          path: artifacts/*.png
+          path: |
+            artifacts/*.png
+            artifacts/live-contested-visible-response/**
           if-no-files-found: warn
           retention-days: 7

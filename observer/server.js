@@ -69,8 +69,14 @@ async function route(request, response, runtime) {
     if (request.method === 'GET' && request.url === '/app.js') {
       return asset(response, 'app.js', 'text/javascript; charset=utf-8');
     }
+    if (request.method === 'GET' && request.url === '/visible-response.js') {
+      return asset(response, 'visible-response.js', 'text/javascript; charset=utf-8');
+    }
     if (request.method === 'GET' && request.url === '/style.css') {
       return asset(response, 'style.css', 'text/css; charset=utf-8');
+    }
+    if (request.method === 'GET' && request.url === '/visible-response.css') {
+      return asset(response, 'visible-response.css', 'text/css; charset=utf-8');
     }
     return json(response, 404, { error: 'not found' });
   } catch (error) {

@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>Floorborn · Live Contested Console</title>
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./visible-response.css">
 </head>
 <body>
   <main class="shell">
@@ -70,6 +71,7 @@
         <p class="hint">Only a currently listed legal action can be committed. Controller input never bypasses the player door.</p>
         <div id="actions" class="actions" role="list"></div>
         <p id="feedback" class="feedback" role="status" aria-live="polite">Waiting for session state…</p>
+        <p id="responseSummary" class="response-summary" role="status" aria-live="polite" aria-atomic="true">DISPLAY Δ ONLY · waiting for the first complete player-visible state.</p>
       </aside>
     </section>
 
@@ -89,5 +91,6 @@
     </footer>
   </main>
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./visible-response.js"></script>
 </body>
 </html>
