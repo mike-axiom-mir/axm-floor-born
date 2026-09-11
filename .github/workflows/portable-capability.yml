@@ -120,11 +120,27 @@ jobs:
           assert.equal(ambiguousCli.stdout, '');
           assert.match(JSON.parse(ambiguousCli.stderr).error.message, /duplicate JSON member: operation/);
 
+          const malformedInput = Buffer.from(JSON.stringify(request), 'utf8');
+          const lineage = Buffer.from('consumer-lineage', 'utf8');
+          const lineageOffset = malformedInput.indexOf(lineage);
+          assert.notEqual(lineageOffset, -1);
+          malformedInput[lineageOffset + lineage.length - 1] = 0xff;
+
+          const malformedCli = spawnSync(
+            process.execPath,
+            ['node_modules/axm-floor-born/bin/floorborn-player.js', 'process'],
+            { input: malformedInput, encoding: 'utf8' },
+          );
+          assert.equal(malformedCli.status, 2, malformedCli.stdout);
+          assert.equal(malformedCli.stdout, '');
+          assert.match(JSON.parse(malformedCli.stderr).error.message, /UTF-8/);
+
           console.log(JSON.stringify({
             provider: descriptor.id,
             selectedAction: response.action.id,
             receiptVerified: true,
             duplicateJsonRejected: true,
+            malformedUtf8Rejected: true,
             gameMutationAuthority: response.authority.gameMutation,
             sourceCheckoutRequired: false,
           }));
