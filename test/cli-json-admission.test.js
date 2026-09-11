@@ -67,3 +67,25 @@ test('CLI rejects nested duplicate members before constructing the semantic requ
   );
   assertDuplicateRejected(ambiguous, 'playerId');
 });
+
+test('CLI rejects malformed UTF-8 bytes before semantic admission', () => {
+  const input = Buffer.from(requestText(), 'utf8');
+  const marker = Buffer.from('cli-json-lineage', 'utf8');
+  const markerOffset = input.indexOf(marker);
+  assert.notEqual(markerOffset, -1);
+
+  // Replace one otherwise valid lineage byte with an invalid standalone UTF-8 byte.
+  // The semantic request accepts arbitrary non-empty lineage strings, so replacement
+  // decoding would silently turn these different bytes into a U+FFFD-containing value.
+  input[markerOffset + marker.length - 1] = 0xff;
+
+  const run = runCli(input);
+  assert.equal(run.status, 2, `malformed UTF-8 must fail closed; stdout=${run.stdout} stderr=${run.stderr}`);
+  assert.equal(run.stdout, '');
+  const error = JSON.parse(run.stderr);
+  assert.equal(error.schema, 'axm.floorborn.process-error/v0.1');
+  assert.equal(error.ok, false);
+  assert.equal(error.error.code, 'INVALID_REQUEST');
+  assert.match(error.error.message, /UTF-8/);
+  assert.equal(error.authority, 'NO_EXECUTION_NO_MERGE_NO_CANON');
+});
