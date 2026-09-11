@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import {
+  closeSync,
+  mkdtempSync,
+  openSync,
+  readSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 function requestText() {
   return JSON.stringify({
@@ -88,4 +98,36 @@ test('CLI rejects malformed UTF-8 bytes before semantic admission', () => {
   assert.equal(error.error.code, 'INVALID_REQUEST');
   assert.match(error.error.message, /UTF-8/);
   assert.equal(error.authority, 'NO_EXECUTION_NO_MERGE_NO_CANON');
+});
+
+test('CLI stops consuming stdin immediately after the byte ceiling is crossed', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'floorborn-bounded-stdin-'));
+  const inputPath = join(directory, 'oversized-input.bin');
+  const input = Buffer.alloc((1024 * 1024) + 2, 0x61);
+  input[input.length - 1] = 0x7a;
+  writeFileSync(inputPath, input);
+
+  const inputFd = openSync(inputPath, 'r');
+  try {
+    const run = spawnSync(process.execPath, ['bin/floorborn-player.js', 'process'], {
+      cwd: new URL('..', import.meta.url),
+      stdio: [inputFd, 'pipe', 'pipe'],
+      encoding: 'utf8',
+    });
+
+    assert.equal(run.status, 2, `oversized stdin must fail closed; stdout=${run.stdout} stderr=${run.stderr}`);
+    assert.equal(run.stdout, '');
+    assert.match(JSON.parse(run.stderr).error.message, /1048576 byte limit/);
+
+    const unread = Buffer.alloc(1);
+    assert.equal(
+      readSync(inputFd, unread, 0, unread.length, null),
+      1,
+      'the CLI must not consume the complete invalid stream before rejecting it',
+    );
+    assert.equal(unread[0], 0x7a, 'only limit + 1 bytes should have been consumed');
+  } finally {
+    closeSync(inputFd);
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
