@@ -5,7 +5,7 @@ import {
   processFloorbornRequest,
 } from '../src/capability.js';
 import { stableStringify } from '../src/stable.js';
-import { parseStrictJson } from '../src/strict-json.js';
+import { decodeUtf8Strict, parseStrictJson } from '../src/strict-json.js';
 
 const MAX_INPUT_BYTES = 1024 * 1024;
 const command = process.argv[2] ?? 'help';
@@ -16,7 +16,7 @@ try {
   } else if (command === 'process') {
     const bytes = readFileSync(0);
     if (bytes.length > MAX_INPUT_BYTES) throw new Error('stdin exceeds 1048576 byte limit');
-    const text = bytes.toString('utf8').trim();
+    const text = decodeUtf8Strict(bytes).trim();
     if (!text) throw new Error('process requires one JSON request on stdin');
     const request = parseStrictJson(text);
     write(processFloorbornRequest(request));
