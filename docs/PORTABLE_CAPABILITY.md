@@ -47,9 +47,9 @@ printf '%s' "$REQUEST_JSON" | node bin/floorborn-player.js process
 
 After a local tarball install, the same commands are available through `axm-floorborn-player`.
 
-The CLI accepts at most 1 MiB on stdin, one JSON value per invocation, writes one deterministic JSON response on stdout, and exits with status 2 plus a bounded JSON error on invalid input. Before semantic request admission it also rejects duplicate object-member names at every JSON depth, including escaped spellings that decode to the same member name. This prevents last-key-wins parsing from erasing contradictory raw input.
+The CLI accepts at most 1 MiB on stdin, requires those admitted bytes to be valid UTF-8, accepts one JSON value per invocation, writes one deterministic JSON response on stdout, and exits with status 2 plus a bounded JSON error on invalid input. Malformed UTF-8 is rejected before replacement decoding can normalize different input bytes into the same JavaScript string. Before semantic request admission the CLI also rejects duplicate object-member names at every JSON depth, including escaped spellings that decode to the same member name. Together these checks prevent replacement decoding or last-key-wins parsing from erasing contradictory raw input before the semantic request contract sees it.
 
-That duplicate-member guarantee belongs specifically to the CLI byte boundary. Library callers pass already-materialized JavaScript objects to `processFloorbornRequest()`, so duplicate textual members that an upstream parser already collapsed cannot be reconstructed or rejected there.
+These byte/text guarantees belong specifically to the CLI admission boundary. Library callers pass already-materialized JavaScript objects to `processFloorbornRequest()`, so malformed text or duplicate textual members that an upstream parser already normalized or collapsed cannot be reconstructed or rejected there. The v0.2 process receipt binds the canonical admitted request object, not the original stdin byte sequence.
 
 ## Operations
 
