@@ -1,3 +1,13 @@
+import { TextDecoder } from 'node:util';
+
+export function decodeUtf8Strict(bytes) {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new SyntaxError('stdin is not valid UTF-8');
+  }
+}
+
 export function parseStrictJson(text) {
   const value = JSON.parse(text);
   scanJsonObjectMembers(text);
