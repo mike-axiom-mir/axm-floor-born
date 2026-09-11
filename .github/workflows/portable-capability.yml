@@ -20,6 +20,7 @@ jobs:
       - name: Syntax
         run: |
           node --check src/capability.js
+          node --check src/bounded-input.js
           node --check src/strict-json.js
           node --check bin/floorborn-player.js
           node --check test/portable-capability.test.js
@@ -43,6 +44,7 @@ jobs:
             'README.md',
             'LICENSE',
             'bin/floorborn-player.js',
+            'src/bounded-input.js',
             'src/capability.js',
             'src/floorborn.js',
             'src/protocol.js',
