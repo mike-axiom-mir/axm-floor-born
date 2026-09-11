@@ -62,7 +62,7 @@ try {
   assert.match(after.summary, /^VISIBLE RESPONSE · /, 'summary must announce a visible response');
   assert.match(after.summary, /new public consequence/, 'summary must name new public consequence evidence');
   assert.match(after.summary, /Presentation only; game truth is unchanged by these markers\.$/, 'summary must state its non-authority boundary');
-  assert.match(after.feedback, /Committed Scout → Center\./, 'existing command feedback must remain intact');
+  assert.match(after.feedback, /Committed Scout Center\./, 'existing command feedback must remain intact');
 
   await page.screenshot({ path: path.join(artifactDir, 'visible-response-desktop.png'), fullPage: true });
 
