@@ -1,0 +1,125 @@
+name: Floorborn public capability discovery
+
+on:
+  pull_request:
+    paths:
+      - '.axm/discovery-public.json'
+      - 'package.json'
+      - 'src/capability.js'
+      - 'src/floorborn.js'
+      - 'src/protocol.js'
+      - 'src/stable.js'
+      - 'LICENSE'
+      - 'registry/**'
+      - 'tools/generate-public-capabilities.mjs'
+      - 'test/public-capability-discovery.test.js'
+      - 'DISCOVERY.md'
+      - '.github/workflows/public-capability-discovery.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.axm/discovery-public.json'
+      - 'package.json'
+      - 'src/capability.js'
+      - 'src/floorborn.js'
+      - 'src/protocol.js'
+      - 'src/stable.js'
+      - 'LICENSE'
+      - 'registry/**'
+      - 'tools/generate-public-capabilities.mjs'
+      - 'test/public-capability-discovery.test.js'
+      - 'DISCOVERY.md'
+      - '.github/workflows/public-capability-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  provider:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Compile discovery boundary
+        run: |
+          node --check tools/generate-public-capabilities.mjs
+          node --check test/public-capability-discovery.test.js
+      - name: Verify generated capability evidence
+        run: node tools/generate-public-capabilities.mjs --check
+      - name: Run focused fail-closed discovery regressions
+        run: node --test test/public-capability-discovery.test.js
+      - name: Verify real packaged capability descriptor
+        run: npm run capability:describe
+      - name: Preserve complete Floorborn suite
+        run: npm test
+
+  portable-discovery-consumer:
+    needs: provider
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Floorborn lane
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Checkout pinned Discovery Buddy source only to build portable artifact
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-discovery-buddy
+          ref: 565c38ecf93a9d563b02211258d8d36fcb1162b5
+          path: .discovery-buddy-source
+      - name: Build and independently verify deterministic Discovery Buddy zipapp
+        run: |
+          python .discovery-buddy-source/tools/build_portable_discovery.py build \
+            --output /tmp/discovery-buddy.pyz \
+            --receipt /tmp/discovery-buddy.pyz.receipt.json
+          python .discovery-buddy-source/tools/build_portable_discovery.py verify \
+            --output /tmp/discovery-buddy.pyz \
+            --receipt /tmp/discovery-buddy.pyz.receipt.json
+          rm -rf .discovery-buddy-source
+          test ! -e .discovery-buddy-source
+          PYTHONPATH= PYTHONNOUSERSITE=1 python /tmp/discovery-buddy.pyz --help
+      - name: Scan, verify, and query Floorborn using only the portable zipapp
+        run: |
+          PYTHONPATH= PYTHONNOUSERSITE=1 python /tmp/discovery-buddy.pyz scan "$GITHUB_WORKSPACE" \
+            --public --output-dir /tmp/axm-discovery
+          PYTHONPATH= PYTHONNOUSERSITE=1 python /tmp/discovery-buddy.pyz verify "$GITHUB_WORKSPACE" \
+            --public --output-dir /tmp/axm-discovery
+          PYTHONPATH= PYTHONNOUSERSITE=1 python /tmp/discovery-buddy.pyz query \
+            /tmp/axm-discovery/public-discovery.json \
+            --capability-id axm.floorborn.bounded-player-process \
+            --provider mike-axiom-mir/axm-floor-born \
+            --status EXPERIMENTAL > /tmp/floorborn-query.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          query = json.loads(Path('/tmp/floorborn-query.json').read_text('utf-8'))
+          assert query['schema'] == 'axm.discovery-query/v0.1'
+          assert query['summary'] == {'matches': 1}
+          assert query['authority'] == {
+              'classification': 'DISCOVERY_EVIDENCE_ONLY',
+              'execute': False,
+              'install': False,
+              'select': False,
+              'merge': False,
+              'canon': False,
+          }
+          candidate = query['candidates'][0]
+          assert candidate['repository'] == 'mike-axiom-mir/axm-floor-born'
+          capability = candidate['capability']
+          assert capability['id'] == 'axm.floorborn.bounded-player-process'
+          assert capability['status'] == 'EXPERIMENTAL'
+          assert capability['providers'] == ['mike-axiom-mir/axm-floor-born']
+          print(json.dumps({
+              'matches': 1,
+              'provider': candidate['repository'],
+              'capability': capability['id'],
+              'status': capability['status'],
+              'authority': query['authority']['classification'],
+              'discovery_source_checkout_present': False,
+          }, sort_keys=True))
+          PY

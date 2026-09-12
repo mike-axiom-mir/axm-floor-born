@@ -1,0 +1,150 @@
+name: Floorborn portable capability
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax
+        run: |
+          node --check src/capability.js
+          node --check src/bounded-input.js
+          node --check src/strict-json.js
+          node --check bin/floorborn-player.js
+          node --check test/portable-capability.test.js
+          node --check test/cli-json-admission.test.js
+      - name: Focused portable capability regressions
+        run: npm run capability:test
+      - name: Strict CLI JSON admission regressions
+        run: node --test test/cli-json-admission.test.js
+      - name: Complete inherited repository suite
+        run: npm test
+      - name: Pack exact local artifact
+        run: |
+          npm pack --ignore-scripts --json > pack.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const packed = JSON.parse(readFileSync('pack.json', 'utf8'))[0];
+          const names = new Set(packed.files.map((file) => file.path));
+          for (const required of [
+            'package.json',
+            'README.md',
+            'LICENSE',
+            'bin/floorborn-player.js',
+            'src/bounded-input.js',
+            'src/capability.js',
+            'src/floorborn.js',
+            'src/protocol.js',
+            'src/stable.js',
+            'src/strict-json.js',
+            'docs/PORTABLE_CAPABILITY.md',
+          ]) assert.ok(names.has(required), `missing packed file: ${required}`);
+          for (const forbidden of ['test/', 'truth-tests/', 'experiments/', 'observer/', '.github/']) {
+            assert.equal([...names].some((name) => name.startsWith(forbidden)), false, `unexpected packed path: ${forbidden}`);
+          }
+          console.log(JSON.stringify({ packed: packed.filename, files: packed.entryCount, integrity: packed.integrity }));
+          NODE
+      - name: Prove checkout-independent local consumer
+        run: |
+          TARBALL="$(node -e "const p=require('./pack.json')[0]; process.stdout.write(p.filename)")"
+          CONSUMER="$(mktemp -d)"
+          cd "$CONSUMER"
+          npm init -y >/dev/null
+          npm install --ignore-scripts "$GITHUB_WORKSPACE/$TARBALL" >/dev/null
+          test -x node_modules/.bin/axm-floorborn-player
+          cat > consumer.mjs <<'NODE'
+          import assert from 'node:assert/strict';
+          import { spawnSync } from 'node:child_process';
+          import {
+            describeCapability,
+            processFloorbornRequest,
+            verifyProcessResponse,
+          } from 'axm-floor-born';
+
+          const descriptor = describeCapability();
+          assert.equal(descriptor.id, 'axm.floorborn.bounded-player-process');
+          assert.equal(descriptor.runtime.network, false);
+          assert.equal(descriptor.authority.gameMutation, false);
+
+          const request = {
+            schema: 'axm.floorborn.process-request/v0.1',
+            operation: 'decide',
+            player: { playerId: 'consumer-floorborn', lineageId: 'consumer-lineage' },
+            observation: {
+              protocol: 'axm.player.v0.1',
+              sessionId: 'external-consumer-001',
+              turn: 0,
+              self: { playerId: 'consumer-floorborn' },
+              place: { id: 'start', known: true },
+              legalActions: [
+                { id: 'move:east', kind: 'move', target: 'east', affordanceTags: ['optional'] },
+                { id: 'wait:hold', kind: 'wait', affordanceTags: [] },
+              ],
+            },
+          };
+
+          const response = processFloorbornRequest(request);
+          assert.equal(response.action.id, 'move:east');
+          assert.equal(verifyProcessResponse(response), true);
+          assert.equal(response.authority.gameMutation, false);
+
+          const cli = spawnSync(
+            process.execPath,
+            ['node_modules/axm-floor-born/bin/floorborn-player.js', 'process'],
+            { input: JSON.stringify(request), encoding: 'utf8' },
+          );
+          assert.equal(cli.status, 0, cli.stderr);
+          const cliResponse = JSON.parse(cli.stdout);
+          assert.deepEqual(cliResponse, response);
+
+          const ambiguousCli = spawnSync(
+            process.execPath,
+            ['node_modules/axm-floor-born/bin/floorborn-player.js', 'process'],
+            {
+              input: JSON.stringify(request).replace('"operation":"decide"', '"operation":"describe","operation":"decide"'),
+              encoding: 'utf8',
+            },
+          );
+          assert.equal(ambiguousCli.status, 2, ambiguousCli.stdout);
+          assert.equal(ambiguousCli.stdout, '');
+          assert.match(JSON.parse(ambiguousCli.stderr).error.message, /duplicate JSON member: operation/);
+
+          const malformedInput = Buffer.from(JSON.stringify(request), 'utf8');
+          const lineage = Buffer.from('consumer-lineage', 'utf8');
+          const lineageOffset = malformedInput.indexOf(lineage);
+          assert.notEqual(lineageOffset, -1);
+          malformedInput[lineageOffset + lineage.length - 1] = 0xff;
+
+          const malformedCli = spawnSync(
+            process.execPath,
+            ['node_modules/axm-floor-born/bin/floorborn-player.js', 'process'],
+            { input: malformedInput, encoding: 'utf8' },
+          );
+          assert.equal(malformedCli.status, 2, malformedCli.stdout);
+          assert.equal(malformedCli.stdout, '');
+          assert.match(JSON.parse(malformedCli.stderr).error.message, /UTF-8/);
+
+          console.log(JSON.stringify({
+            provider: descriptor.id,
+            selectedAction: response.action.id,
+            receiptVerified: true,
+            duplicateJsonRejected: true,
+            malformedUtf8Rejected: true,
+            gameMutationAuthority: response.authority.gameMutation,
+            sourceCheckoutRequired: false,
+          }));
+          NODE
+          node consumer.mjs

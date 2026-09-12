@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Floorborn · Live Contested Console</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./visible-response.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">AXM FLOORBORN · CONTESTED RTS LAB</p>
+        <h1>Live Contested Console</h1>
+        <p class="lede">Operate the external chat seat through the same bounded player-facing observation and legal-action door as Floorborn.</p>
+      </div>
+      <div class="truth-strip" aria-label="Experience boundaries">
+        <span>LOCAL</span><span>OFFLINE</span><span>PLAYER-VISIBLE ONLY</span><span>DISPLAY ≠ AUTHORITY</span>
+      </div>
+    </header>
+
+    <section class="status-rail" aria-label="Current session status">
+      <div><span class="label">Session</span><strong id="sessionId">—</strong></div>
+      <div><span class="label">Window</span><strong id="windowState">—</strong></div>
+      <div><span class="label">Budget</span><strong id="budgetState">—</strong></div>
+      <div><span class="label">Control</span><strong id="controlState">—</strong></div>
+      <div><span class="label">Status</span><strong id="sessionStatus">CONNECTING</strong></div>
+    </section>
+
+    <section class="layout">
+      <section class="panel battlefield" aria-labelledby="fieldTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">PLAYER-FACING STATE</p>
+            <h2 id="fieldTitle">What your seat can see</h2>
+          </div>
+          <button id="resetButton" class="ghost" type="button">Reset lab</button>
+        </div>
+        <p id="objective" class="objective">Loading objective…</p>
+
+        <div class="zones">
+          <article class="zone">
+            <div class="zone-title"><span>Your groups</span><small>known</small></div>
+            <div id="ownGroups" class="unit-grid" aria-live="polite"></div>
+          </article>
+          <article class="zone center-zone">
+            <div class="zone-title"><span>Visible contacts</span><small>fog-limited</small></div>
+            <div id="contacts" class="unit-grid" aria-live="polite"></div>
+            <p id="fogNote" class="fog-note">Anything outside your observation stays hidden.</p>
+          </article>
+        </div>
+      </section>
+
+      <aside class="panel action-panel" aria-labelledby="actionTitle">
+        <div class="panel-head compact">
+          <div>
+            <p class="eyebrow">YOUR COMMAND OPPORTUNITY</p>
+            <h2 id="actionTitle">Legal actions</h2>
+          </div>
+          <span id="actionCount" class="count">0</span>
+        </div>
+        <div class="input-guide" aria-label="Controller status and input help">
+          <div class="input-guide-head">
+            <span class="label">Gamepad</span>
+            <strong id="controllerState" class="controller-state" data-mode="none" role="status" aria-live="polite">CHECKING</strong>
+          </div>
+          <p id="controllerHelp">Keyboard: Arrow keys move focus; Enter or Space commits. Standard gamepad: D-pad or left stick moves focus; A commits.</p>
+        </div>
+        <p class="hint">Only a currently listed legal action can be committed. Controller input never bypasses the player door.</p>
+        <div id="actions" class="actions" role="list"></div>
+        <p id="feedback" class="feedback" role="status" aria-live="polite">Waiting for session state…</p>
+        <p id="responseSummary" class="response-summary" role="status" aria-live="polite" aria-atomic="true">DISPLAY Δ ONLY · waiting for the first complete player-visible state.</p>
+      </aside>
+    </section>
+
+    <section class="panel transcript-panel" aria-labelledby="transcriptTitle">
+      <div class="panel-head compact">
+        <div>
+          <p class="eyebrow">PUBLIC CONSEQUENCE LEDGER</p>
+          <h2 id="transcriptTitle">What happened</h2>
+        </div>
+        <span id="transcriptCount" class="count">0</span>
+      </div>
+      <ol id="transcript" class="transcript"></ol>
+    </section>
+
+    <footer>
+      No hidden doctrine, host snapshot, or Floorborn decision trace is sent to this surface during play. The console submits only an action ID selected from the current legal-action list.
+    </footer>
+  </main>
+  <script type="module" src="./app.js"></script>
+  <script type="module" src="./visible-response.js"></script>
+</body>
+</html>
