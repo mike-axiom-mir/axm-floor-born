@@ -3,7 +3,7 @@
   "repository": "mike-axiom-mir/axm-floor-born",
   "registry": {
     "path": "registry/capabilities.jsonl",
-    "sha256": "1912dca5137a60c73f2d47477a8050b65a0cf1945fb3a43805441a43a428b99d",
+    "sha256": "2255e153bbc6e5083a0c9a9bb7784c0395cc99581a5133e9f455e057eb3e015b",
     "capability_count": 1,
     "capability_ids": [
       "axm.floorborn.bounded-player-process"
@@ -12,7 +12,7 @@
   "sources": [
     {
       "path": "package.json",
-      "git_blob_sha1": "2219166dfd7d3ca32fac5a9a52fe8c72e5c98ec7"
+      "git_blob_sha1": "0005ff63ea74de1698edfed8b18d7526d1780de3"
     },
     {
       "path": "src/capability.js",
@@ -20,7 +20,7 @@
     },
     {
       "path": "LICENSE",
-      "git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
+      "git_blob_sha1": "1432c873e8d6d55ab8a164193f25553a2d1380ef"
     }
   ],
   "compatibility": {
@@ -51,5 +51,5 @@
     "merge_authority": false,
     "canon_authority": false
   },
-  "receipt_sha256": "246cd8efcb0fae4c52e823b87e510d660b2f47a9f201eb084f9d1ee4aebb41e5"
+  "receipt_sha256": "a963b23c3902ff17378323ba8e413383b763798c4e385d94f190dab2e7bf2915"
 }

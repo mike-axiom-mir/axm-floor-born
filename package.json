@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Deterministic machine-floor operational-player research lab.",
-  "license": "Apache-2.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "exports": {
     ".": "./src/capability.js"
   },
