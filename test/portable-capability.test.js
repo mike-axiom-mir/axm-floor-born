@@ -67,7 +67,7 @@ test('capability descriptor is bounded, offline, and metadata-aligned', () => {
     publication: false,
   });
   assert.equal(pkg.private, true);
-  assert.equal(pkg.license, 'Apache-2.0');
+  assert.equal(pkg.license, 'PolyForm-Noncommercial-1.0.0');
   assert.equal(pkg.capability.id, descriptor.id);
   assert.equal(pkg.capability.status, descriptor.status);
 });

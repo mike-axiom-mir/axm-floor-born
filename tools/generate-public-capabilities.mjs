@@ -82,7 +82,7 @@ function assertPackageBoundary(packageDocument) {
   if (typeof packageDocument.version !== 'string' || packageDocument.version.length === 0) throw new Error('package version is required');
   if (packageDocument.private !== true) throw new Error('package must remain private to prevent accidental registry publication');
   if (packageDocument.type !== 'module') throw new Error('unexpected package module type');
-  if (packageDocument.license !== 'Apache-2.0') throw new Error('unexpected package license declaration');
+  if (packageDocument.license !== 'PolyForm-Noncommercial-1.0.0') throw new Error('unexpected package license declaration');
   if (packageDocument.engines?.node !== '>=24') throw new Error('unexpected Node runtime boundary');
   if (packageDocument.exports?.['.'] !== './src/capability.js') throw new Error('unexpected library export');
   if (packageDocument.bin?.['axm-floorborn-player'] !== './bin/floorborn-player.js') throw new Error('unexpected CLI export');
@@ -135,6 +135,8 @@ function assertExecutableBoundary(descriptor, packageCapability) {
 }
 
 export async function buildArtifacts(root = process.cwd()) {
+  const licenseText = fs.readFileSync(resolveRegularFile(root, 'LICENSE'), 'utf8');
+  if (!licenseText.startsWith('# PolyForm Noncommercial License 1.0.0')) throw new Error('current license evidence drift');
   readMarker(root);
   const packageDocument = JSON.parse(fs.readFileSync(resolveRegularFile(root, 'package.json'), 'utf8'));
   const packageCapability = assertPackageBoundary(packageDocument);
